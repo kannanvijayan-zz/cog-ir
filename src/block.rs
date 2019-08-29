@@ -1,5 +1,10 @@
 
-use crate::instr::{ InstrPosn, InstrNo, Instr, EndInstr };
+use crate::ir_types::IrType;
+use crate::ops::PhiOp;
+use crate::ops::Operation;
+use crate::instr::{
+    InstrPosn, InstrNo, Instr, EndInstr, InstrObj
+};
 
 /**
  * A block-id identifies a block by declaration id.
@@ -208,6 +213,20 @@ impl BlockStore {
     fn front_instr_no(&self) -> InstrNo {
         InstrNo::new(self.instr_posns.len() as u32)
     }
+    fn take_instr_no(&mut self, posn: InstrPosn)
+      -> InstrNo
+    {
+        let instr_no = self.instr_posns.len();
+        debug_assert!(
+          instr_no < (Self::MAX_INSTRS as usize));
+        self.instr_posns.push(posn);
+        InstrNo::new(instr_no as u32)
+    }
+    fn take_phi_no(&mut self) -> u32 {
+        let phi_no = self.num_phis;
+        self.num_phis += 1;
+        phi_no
+    }
 
     // Declare a new block and get an index for it.
     fn decl_block(&mut self, bv: BlockVariant) -> BlockId {
@@ -328,21 +347,6 @@ impl BlockStore {
         self.get_mut_block(id).set_loop_complete();
     }
 
-    pub(crate) fn take_instr_no(&mut self, posn: InstrPosn)
-      -> InstrNo
-    {
-        let instr_no = self.instr_posns.len();
-        debug_assert!(
-          instr_no < (Self::MAX_INSTRS as usize));
-        self.instr_posns.push(posn);
-        InstrNo::new(instr_no as u32)
-    }
-    pub(crate) fn take_phi_no(&mut self) -> u32 {
-        let phi_no = self.num_phis;
-        self.num_phis += 1;
-        phi_no
-    }
-
     pub(crate) fn emit_instr<I: Instr>(&mut self,
         instr: I)
       -> Option<(BlockId, InstrNo)>
@@ -363,6 +367,33 @@ impl BlockStore {
             == (self.instr_bytes.len() as u32));
 
         debug!("Instr {} {}", instr_posn, instr_no);
+
+        // Return the block and instruction.
+        Some((block_id, instr_no))
+    }
+
+    pub(crate) fn emit_phi<T: IrType>(&mut self)
+      -> Option<(BlockId, InstrNo)>
+    {
+        // Get the location and number of the instr.
+        let block_id = self.cur_block_id;
+        let instr_posn = self.front_instr_posn();
+        let instr_no = self.take_instr_no(instr_posn);
+
+        // Encode the instruction bytes.
+        let phi_op = PhiOp::<T>::new(self.take_phi_no());
+        let sz = InstrObj::<PhiOp<T>, InstrNo>
+                         ::new(&phi_op, &[])
+                  .send_instr(&mut self.instr_bytes) ?;
+
+        unsafe { self.get_mut_block(block_id) }
+          .set_add_instr(instr_no);
+
+        debug_assert!(
+          (instr_posn.as_u32() + (sz as u32))
+            == (self.instr_bytes.len() as u32));
+
+        debug!("Phi {} {}", instr_posn, instr_no);
 
         // Return the block and instruction.
         Some((block_id, instr_no))

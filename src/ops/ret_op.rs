@@ -17,7 +17,7 @@ impl<T: IrType> RetOp<T> {
     }
 }
 impl<T: IrType> TerminalOperation for RetOp<T> {
-    fn num_targets(&self) -> usize { 0 }
+    fn num_targets(&self) -> u32 { 0 }
 }
 impl<T: IrType> Operation for RetOp<T> {
     type Output = VoidTy;

@@ -19,7 +19,7 @@ impl JumpOp {
 }
 
 impl TerminalOperation for JumpOp {
-    fn num_targets(&self) -> usize { 1 }
+    fn num_targets(&self) -> u32 { 1 }
 }
 impl Operation for JumpOp {
     type Output = VoidTy;

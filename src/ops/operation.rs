@@ -30,5 +30,5 @@ pub trait Operation: Sized + Clone + fmt::Display
 /** An terminal operation terminates a block. */
 pub trait TerminalOperation: Operation {
     /** The number of target blocks for this operation. */
-    fn num_targets(&self) -> usize;
+    fn num_targets(&self) -> u32;
 }

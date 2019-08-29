@@ -132,6 +132,8 @@ impl<'a, OP, DEF> InstrObj<'a, OP, DEF>
     pub(crate) fn new(op: &'a OP, inputs: &'a [DEF])
       -> InstrObj<'a, OP, DEF>
     {
+        debug_assert!(
+          (op.num_operands() as usize) == inputs.len());
         InstrObj(op, inputs)
     }
 }
@@ -145,6 +147,10 @@ impl<'a, OP, DEF, BLK> EndInstrObj<'a, OP, DEF, BLK>
                       targets: &'a [(BLK, &'a [DEF])])
       -> EndInstrObj<'a, OP, DEF, BLK>
     {
+        debug_assert!(
+          (op.num_operands() as usize) == inputs.len());
+        debug_assert!(
+          (op.num_targets() as usize) == targets.len());
         EndInstrObj(op, inputs, targets)
     }
 }

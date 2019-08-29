@@ -19,7 +19,7 @@ impl BranchOp {
 }
 
 impl TerminalOperation for BranchOp {
-    fn num_targets(&self) -> usize { 2 }
+    fn num_targets(&self) -> u32 { 2 }
 }
 impl Operation for BranchOp {
     type Output = VoidTy;

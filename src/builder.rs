@@ -495,9 +495,11 @@ impl<'bs> BuildSession<'bs> {
     pub fn emit_phi<T: IrType>(&mut self)
       -> TypedDefn<'bs, T>
     {
-        let phi_no = self.mut_block_store().take_phi_no();
-        self.emit_instr::<PhiOp<T>>(
-          PhiOp::new(phi_no), &[]).unwrap()
+        assert!(! self.get_cur_block().has_finished());
+        let (_block_id, instr_no) =
+          self.mut_block_store().emit_phi::<T>()
+            .unwrap();
+        TypedDefn::new(instr_no)
     }
 
     pub fn ret<'cs: 'bs, T: IrType>(&mut self,
