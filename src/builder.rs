@@ -4,7 +4,8 @@ use std::mem;
 
 use crate::block::{ Block, BlockId, BlockStore };
 use crate::ops::{ Operation, TerminalOperation };
-use crate::instr::{ InstrId, InstrObj, EndInstrObj };
+use crate::instr::InstrId;
+use crate::instr_obj::{ InstrObj, EndInstrObj };
 
 use crate::ops::{
     NopOp, PhiOp,

@@ -2,9 +2,8 @@
 use crate::ir_types::IrType;
 use crate::ops::PhiOp;
 use crate::ops::Operation;
-use crate::instr::{
-    InstrPosn, InstrId, Instr, EndInstr, InstrObj
-};
+use crate::instr::{ InstrPosn, InstrId, Instr, EndInstr };
+use crate::instr_obj::InstrObj;
 
 /**
  * A block-id identifies a block by declaration id.
@@ -166,8 +165,8 @@ impl BlockStore {
     const DECL_BLOCKS_CAP: usize = 8;
     const RPO_INDEX_CAP: usize = 8;
 
-    const MAX_DECL_BLOCKS: u32 = 0xff_ffff;
-    const MAX_INSTRS: u32 = 0xfff_ffff;
+    const MAX_DECL_BLOCKS: u32 = 0xf_ffff;
+    const MAX_INSTR_BYTES: u32 = 0xff_ffff;
 
     pub fn new() -> BlockStore {
         let instr_bytes =
@@ -345,7 +344,11 @@ impl BlockStore {
           (instr_posn.as_u32() + (sz as u32))
             == (self.instr_bytes.len() as u32));
 
-        debug!("{} - {}", instr_posn, instr.op());
+        debug!("Emit {} - {}", instr_posn, instr.op());
+        for (i, def) in instr.inputs().iter().enumerate() {
+            let instr_id: InstrId = (*def).into();
+            debug!("  in{} - {}", i, instr_id);
+        }
 
         // Return the block and instruction.
         Some((block_id, instr_id))
@@ -372,7 +375,7 @@ impl BlockStore {
           (instr_posn.as_u32() + (sz as u32))
             == (self.instr_bytes.len() as u32));
 
-        debug!("Phi {} - {}", instr_posn, phi_op);
+        debug!("Emit {} - {}", instr_posn, phi_op);
 
         // Return the block and instruction.
         Some((block_id, instr_id))
@@ -391,7 +394,7 @@ impl BlockStore {
         let sz =
           end_instr.send_end(&mut self.instr_bytes) ?;
 
-        debug!("End {} - {}", instr_posn, end_instr.op());
+        debug!("Emit {} - {}", instr_posn, end_instr.op());
 
         // increment target blocks input edge count.
         for tgt_pair in end_instr.targets() {
@@ -424,9 +427,9 @@ impl BlockStore {
             tgt_ref.incr_input_edges();
             debug!("  => target {} phis={}",
                    tgt_id.as_u32(), num_phi_defns);
-            for defn in phi_defns {
+            for (i, defn) in phi_defns.iter().enumerate() {
                 let id: InstrId = (*defn).into();
-                debug!("    => phi defn {}", id);
+                debug!("    phi {} arg: {}", i, id);
             }
 
         }

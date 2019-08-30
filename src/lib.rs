@@ -8,6 +8,7 @@ mod byte_sink;
 mod ir_types;
 mod ops;
 mod instr;
+mod instr_obj;
 mod block;
 mod builder;
 
