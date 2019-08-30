@@ -135,9 +135,32 @@ Blocks must be declared before they are defined (filled
 with instructions), and the number of phis in the block
 must be specified at declaration time.
 
-Blocks must be entered (filled) and their instructions
-emitted in the order of their declaration within the
-subgraph.
+Blocks must be entered (to be filled) and their
+instructions emitted in the order of their declaration
+within the subgraph.
+
+```
+    // Three types of blocks to declare.
+    bs.decl_plain_block(...);
+    bs.decl_start_block(...);
+    bs.decl_loop_head(...);
+
+    // Later:
+    // enter blocks for definition in various ways.
+
+    // Enter a start or plain block:
+    bs.def_block(block_a);
+    bs.emit_instr_1();
+    bs.emit_instr_2();
+    bs.jump(...); // End instr finishes block.
+
+    // Enter the next block in declaration order:
+    bs.def_block(block_b);
+    bs.emit_instr_1();
+    bs.emit_instr_2();
+    bs.branch(...); // End instr finishes block.
+    
+```
 
 Once a block is entered, all the instructions for it
 must be emitted in sequence until the terminal instruction
@@ -233,7 +256,20 @@ compiler sub-logic that is examining site-specific
 data dynamically.
 
 Nested subgraphs may be constructed arbitrarily -
-at any point during graph construction.
+at any point during graph construction, with the
+following api:
+
+```
+    build(|bs| {
+        ...
+        bs.def_subgraph(|cs| {
+            // cs: &mut BuildSession<'cs> where 'bs: 'cs
+            // Declare and define own blocks here.
+        });
+        ...
+    }
+```
+
 
 Nested subgraphs declare and specify their own list
 of blocks (in internal RPO order), and may invoke
@@ -263,7 +299,7 @@ continuation arguments for control flow.
 ## Loops
 
 See the `src/bin/test1.rs` file for an example
-of subgraph builder usage.
+of building loops.
 
 Loops are specified as sub-graphs.  A loop header block
 must be declared specifically (with `decl_loop_head`),
@@ -278,6 +314,27 @@ the loop block (or any other outer loop block).
 Once the loop subgraph callback completes, the loop
 header block is marked as closed, and new back-references
 may no longer be made to it.
+
+```
+    build(|bs| {
+        ...
+        // Declare a loop block.
+        let bl_loop = bs.decl_loop_head(...);
+
+        ...
+        // Later
+        bs.def_loop(bl_loop, |bs| {
+            // Nested BuildSession used for loop subgraph.
+
+            // Within this builder and any nested
+            // subgraphs, valid to use `bl_loop` as
+            // a jump target.
+        });
+        // bl_loop is now closed and cannot be
+        // used as a control flow target.
+        ...
+    }
+```
 
 ## Overview
 
