@@ -15,6 +15,13 @@ Instead, CogIR focuses on efficiency of representation
 and fast logic for emitting instructions and collecting
 block structure.
 
+```
+*NOTE*
+Currently, this implementation is just a builder
+which produces a graph representation.  Actual
+machine code generation is not yet implemented.
+```
+
 ## A simple single-block graph construction.
 
 ```
