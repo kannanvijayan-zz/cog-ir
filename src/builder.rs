@@ -4,7 +4,7 @@ use std::mem;
 
 use crate::block::{ Block, BlockId, BlockStore };
 use crate::ops::{ Operation, TerminalOperation };
-use crate::instr::{ InstrNo, InstrObj, EndInstrObj };
+use crate::instr::{ InstrId, InstrObj, EndInstrObj };
 
 use crate::ops::{
     NopOp, PhiOp,
@@ -341,25 +341,25 @@ impl<'bs> BuildSession<'bs> {
       where OP: Operation
     {
         assert!(! self.get_cur_block().has_finished());
-        let (_block_id, instr_no) =
+        let (_block_id, instr_id) =
           self.mut_block_store().emit_instr(
             InstrObj::new(&op, operands)) ?;
-        Some(TypedDefn::new(instr_no))
+        Some(TypedDefn::new(instr_id))
     }
 
     fn emit_end<'cs: 'bs, OP>(&mut self,
         op: OP,
         operands: &[Defn<'cs>],
         targets: &[(BlockRef<'cs>, &[Defn<'cs>])])
-      -> Option<InstrNo>
+      -> Option<InstrId>
       where OP: TerminalOperation + Operation
     {
         assert!(! self.get_cur_block().has_finished());
-        let (_block_id, instr_no) =
+        let (_block_id, instr_id) =
           self.mut_block_store().emit_end(
             EndInstrObj::new(&op, operands, targets)) ?;
         debug_assert!(self.get_cur_block().has_finished());
-        Some(instr_no)
+        Some(instr_id)
     }
 
     pub fn emit_nop(&mut self) {
@@ -496,10 +496,10 @@ impl<'bs> BuildSession<'bs> {
       -> TypedDefn<'bs, T>
     {
         assert!(! self.get_cur_block().has_finished());
-        let (_block_id, instr_no) =
+        let (_block_id, instr_id) =
           self.mut_block_store().emit_phi::<T>()
             .unwrap();
-        TypedDefn::new(instr_no)
+        TypedDefn::new(instr_id)
     }
 
     pub fn ret<'cs: 'bs, T: IrType>(&mut self,
@@ -539,23 +539,23 @@ impl<'bs> BuildSession<'bs> {
 
 /** A definition (just a reference to an instruction). */
 #[derive(Clone, Copy, Debug)]
-pub struct Defn<'a>(InstrNo, PhantomData<&'a ()>);
+pub struct Defn<'a>(InstrId, PhantomData<&'a ()>);
 
 impl<'a> Defn<'a> {
-    pub(crate) fn new(instr_no: InstrNo) -> Defn<'a> {
-        Defn(instr_no, Default::default())
+    pub(crate) fn new(instr_id: InstrId) -> Defn<'a> {
+        Defn(instr_id, Default::default())
     }
-    pub fn instr_no(&self) -> InstrNo { self.0 }
+    pub fn instr_id(&self) -> InstrId { self.0 }
     pub fn as_u32(&self) -> u32 { self.0.as_u32() }
 }
-impl<'a> Into<InstrNo> for Defn<'a> {
-    fn into(self) -> InstrNo { self.0 }
+impl<'a> Into<InstrId> for Defn<'a> {
+    fn into(self) -> InstrId { self.0 }
 }
 
 /** A typed definition. */
 #[derive(Debug)]
 pub struct TypedDefn<'a, T: IrOutputType>
-    (InstrNo, PhantomData<&'a T>);
+    (InstrId, PhantomData<&'a T>);
 impl<'a, T: IrOutputType> Clone
   for TypedDefn<'a, T>
 {
@@ -566,13 +566,13 @@ impl<'a, T: IrOutputType> Clone
 impl<'a, T: IrOutputType> Copy for TypedDefn<'a, T> {}
 
 impl<'a, T: IrOutputType> TypedDefn<'a, T> {
-    pub fn new(instr_no: InstrNo) -> TypedDefn<'a, T> {
-        TypedDefn(instr_no, Default::default())
+    pub fn new(instr_id: InstrId) -> TypedDefn<'a, T> {
+        TypedDefn(instr_id, Default::default())
     }
 
-    pub fn instr_no(&self) -> InstrNo { self.0 }
+    pub fn instr_id(&self) -> InstrId { self.0 }
     pub fn untyped_defn(&self) -> Defn<'a> {
-        Defn::new(self.instr_no())
+        Defn::new(self.instr_id())
     }
     pub fn as_u32(&self) -> u32 { self.0.as_u32() }
 }
