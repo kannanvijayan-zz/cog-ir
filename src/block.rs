@@ -44,16 +44,17 @@ pub struct Block {
     // fixed after the start of block specification.
     input_edges: u32,
 
-    // The ordering the block in specification
-    // (RPO) order.  Only set when the block is entered.
+    // The numbering of the block in specification order
+    // (RPO).  Only set when the block is entered.
     order: u32,
 
     // The index of the first instruction.  Only set
     // when the block is entered.
     first_instr: InstrId,
 
-    // The index of the last instruction.  Only set
-    // when the block is finished.
+    // The index of the last (end) instruction.  Only set
+    // when end instruction is emitted and the block is
+    // finished.
     last_instr: InstrId,
 }
 enum BlockVariant {
@@ -344,7 +345,7 @@ impl BlockStore {
           (instr_posn.as_u32() + (sz as u32))
             == (self.instr_bytes.len() as u32));
 
-        debug!("Instr {}", instr_id);
+        debug!("{} - {}", instr_posn, instr.op());
 
         // Return the block and instruction.
         Some((block_id, instr_id))
@@ -371,7 +372,7 @@ impl BlockStore {
           (instr_posn.as_u32() + (sz as u32))
             == (self.instr_bytes.len() as u32));
 
-        debug!("Phi {}", instr_id);
+        debug!("Phi {} - {}", instr_posn, phi_op);
 
         // Return the block and instruction.
         Some((block_id, instr_id))
@@ -390,7 +391,7 @@ impl BlockStore {
         let sz =
           end_instr.send_end(&mut self.instr_bytes) ?;
 
-        debug!("End {}", instr_id);
+        debug!("End {} - {}", instr_posn, end_instr.op());
 
         // increment target blocks input edge count.
         for tgt_pair in end_instr.targets() {

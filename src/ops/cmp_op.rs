@@ -21,6 +21,13 @@ impl CmpKind {
         debug_assert!(Self::is_valid_code(code));
         mem::transmute(code)
     }
+    pub fn as_str(&self) -> &'static str {
+        match *self {
+          CmpKind::Lt => "Lt", CmpKind::Gt => "Gt",
+          CmpKind::Le => "Le", CmpKind::Ge => "Ge",
+          CmpKind::Eq => "Eq", CmpKind::Ne => "Ne",
+        }
+    }
 }
 
 /** Introduces a comparison instruction. */
@@ -76,6 +83,7 @@ impl<T: IrType> fmt::Display for CmpOp<T> {
     fn fmt(&self, f: &mut fmt::Formatter)
       -> Result<(), fmt::Error>
     {
-        write!(f, "Cmp{}", T::ID.as_str())
+        write!(f, "Cmp{}_{}",
+          self.0.as_str(), T::ID.as_str())
     }
 }

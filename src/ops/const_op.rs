@@ -127,7 +127,7 @@ impl fmt::Display for ConstBoolOp {
     fn fmt(&self, f: &mut fmt::Formatter)
       -> Result<(), fmt::Error>
     {
-        write!(f, "ConstB({})", self.0)
+        write!(f, "ConstBool({})", self.0)
     }
 }
 
@@ -135,7 +135,7 @@ impl fmt::Display for ConstInt32Op {
     fn fmt(&self, f: &mut fmt::Formatter)
       -> Result<(), fmt::Error>
     {
-        write!(f, "ConstI32({})", self.0)
+        write!(f, "ConstInt32({})", self.0)
     }
 }
 
@@ -143,6 +143,6 @@ impl fmt::Display for ConstInt64Op {
     fn fmt(&self, f: &mut fmt::Formatter)
       -> Result<(), fmt::Error>
     {
-        write!(f, "ConstI64({})", self.0)
+        write!(f, "ConstInt64({})", self.0)
     }
 }

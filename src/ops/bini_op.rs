@@ -87,6 +87,6 @@ impl<T: IrType> fmt::Display for BiniOp<T> {
           BiniKind::Mul => "Mul", BiniKind::And => "And",
           BiniKind::Or => "Or", BiniKind::Xor => "Xor",
         };
-        write!(f, "Bin{}", s)
+        write!(f, "Bini{}_{}", s, T::ID.as_str())
     }
 }
