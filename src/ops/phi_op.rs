@@ -11,11 +11,11 @@ use crate::ir_types::{ IrType, IrTypeId };
 
 /** Introduces a phi value. */
 #[derive(Clone)]
-pub struct PhiOp<T: IrType>(u32, PhantomData<T>);
+pub struct PhiOp<T: IrType>(PhantomData<T>);
 
 impl<T: IrType> PhiOp<T> {
-    pub(crate) fn new(phi_no: u32) -> PhiOp<T> {
-        PhiOp(phi_no, Default::default())
+    pub(crate) fn new() -> PhiOp<T> {
+        PhiOp(Default::default())
     }
 }
 
@@ -47,19 +47,16 @@ impl<T: IrType> Operation for PhiOp<T> {
 }
 
 impl<T: IrType> ByteSerialize for PhiOp<T> {
-    fn send_to<S>(&self, sink: &mut S) -> Option<usize>
+    fn send_to<S>(&self, _sink: &mut S) -> Option<usize>
       where S: ByteSink
     {
-        Leb128U::new(self.0 as u64).send_to(sink)
+        Some(0)
     }
 
-    unsafe fn take_from<S>(src: &mut S) -> (usize, Self)
+    unsafe fn take_from<S>(_src: &mut S) -> (usize, Self)
       where S: ByteSource
     {
-        let (bytes, leb) = Leb128U::take_from(src);
-        let v = leb.as_u64();
-        debug_assert!(v <= (u32::max_value() as u64));
-        (bytes, PhiOp::new(v as u32))
+        (0, PhiOp::new())
     }
 }
 

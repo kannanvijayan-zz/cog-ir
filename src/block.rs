@@ -157,7 +157,6 @@ pub struct BlockStore {
     num_starts: u16,
     num_loops: u16,
     total_phis: u32,
-    num_phis: u32,
 }
 
 impl BlockStore {
@@ -183,7 +182,7 @@ impl BlockStore {
             instr_bytes, decl_blocks,
             rpo_index, cur_block_id,
             num_starts: 0_u16, num_loops: 0_u16,
-            total_phis: 0_u32, num_phis: 0_u32
+            total_phis: 0_u32
         };
 
         // Declare a start block and enter it
@@ -206,11 +205,6 @@ impl BlockStore {
 
     fn front_instr_posn(&self) -> InstrPosn {
         InstrPosn::new(self.instr_bytes.len() as u32)
-    }
-    fn take_phi_no(&mut self) -> u32 {
-        let phi_no = self.num_phis;
-        self.num_phis += 1;
-        phi_no
     }
 
     // Declare a new block and get an index for it.
@@ -365,7 +359,7 @@ impl BlockStore {
         let instr_id = InstrId::new(instr_posn);
 
         // Encode the instruction bytes.
-        let phi_op = PhiOp::<T>::new(self.take_phi_no());
+        let phi_op = PhiOp::<T>::new();
         let sz = InstrObj::<PhiOp<T>, InstrId>
                          ::new(&phi_op, &[])
                   .send_instr(&mut self.instr_bytes) ?;
