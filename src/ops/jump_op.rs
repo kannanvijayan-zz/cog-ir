@@ -27,11 +27,6 @@ impl Operation for JumpOp {
     fn opcode() -> Opcode { Opcode::Jump }
 
     fn num_operands(&self) -> u32 { 0 }
-    fn send_name<S>(&self, sink: &mut S) -> Option<usize>
-      where S: ByteSink
-    {
-        sink.send_slice("Jump")
-    }
 }
 
 impl ByteSerialize for JumpOp {

@@ -23,11 +23,6 @@ impl Operation for NopOp {
     fn opcode() -> Opcode { Opcode::Nop }
 
     fn num_operands(&self) -> u32 { 0 }
-    fn send_name<S>(&self, sink: &mut S) -> Option<usize>
-      where S: ByteSink
-    {
-        sink.send_slice("Nop")
-    }
 }
 
 impl ByteSerialize for NopOp {

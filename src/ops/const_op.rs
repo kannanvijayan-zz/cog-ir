@@ -40,12 +40,6 @@ impl Operation for ConstBoolOp {
 
     fn opcode() -> Opcode { Opcode::ConstBool }
     fn num_operands(&self) -> u32 { 0 }
-
-    fn send_name<S>(&self, sink: &mut S) -> Option<usize>
-      where S: ByteSink
-    {
-        sink.send_slice("ConstBool")
-    }
 }
 
 impl Operation for ConstInt32Op {
@@ -53,12 +47,6 @@ impl Operation for ConstInt32Op {
 
     fn opcode() -> Opcode { Opcode::ConstInt32 }
     fn num_operands(&self) -> u32 { 0 }
-
-    fn send_name<S>(&self, sink: &mut S) -> Option<usize>
-      where S: ByteSink
-    {
-        sink.send_slice("ConstInt32")
-    }
 }
 
 impl Operation for ConstInt64Op {
@@ -66,12 +54,6 @@ impl Operation for ConstInt64Op {
 
     fn opcode() -> Opcode { Opcode::ConstInt64 }
     fn num_operands(&self) -> u32 { 0 }
-
-    fn send_name<S>(&self, sink: &mut S) -> Option<usize>
-      where S: ByteSink
-    {
-        sink.send_slice("ConstInt64")
-    }
 }
 
 impl ByteSerialize for ConstBoolOp {

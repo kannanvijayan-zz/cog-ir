@@ -27,11 +27,6 @@ impl Operation for BranchOp {
     fn opcode() -> Opcode { Opcode::Branch }
 
     fn num_operands(&self) -> u32 { 1 }
-    fn send_name<S>(&self, sink: &mut S) -> Option<usize>
-      where S: ByteSink
-    {
-        sink.send_slice("Branch")
-    }
 }
 
 impl ByteSerialize for BranchOp {

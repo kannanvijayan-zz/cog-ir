@@ -36,14 +36,6 @@ impl<T: IrType> Operation for PhiOp<T> {
     // given to the end instruction of each directd
     // predecessor block.
     fn num_operands(&self) -> u32 { 0 }
-
-    fn send_name<S>(&self, sink: &mut S) -> Option<usize>
-      where S: ByteSink
-    {
-        let s0 = sink.send_slice("Phi") ?;
-        let s1 = sink.send_slice(T::ID.as_str()) ?;
-        Some(s0 + s1)
-    }
 }
 
 impl<T: IrType> ByteSerialize for PhiOp<T> {

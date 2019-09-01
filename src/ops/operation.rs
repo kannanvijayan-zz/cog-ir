@@ -21,10 +21,6 @@ pub trait Operation: Sized + Clone + fmt::Display
 
     /** Get the number of expected operands. */
     fn num_operands(&self) -> u32;
-
-    /** Write out the operation's description. */
-    fn send_name<S>(&self, sink: &mut S) -> Option<usize>
-      where S: ByteSink;
 }
 
 /** An terminal operation terminates a block. */

@@ -52,14 +52,6 @@ impl<T: IrType> Operation for BiniOp<T> {
     }
 
     fn num_operands(&self) -> u32 { 2 }
-
-    fn send_name<S>(&self, sink: &mut S) -> Option<usize>
-      where S: ByteSink
-    {
-        let s0 = sink.send_slice("Bini") ?;
-        let s1 = sink.send_slice(T::ID.as_str()) ?;
-        Some(s0 + s1)
-    }
 }
 
 impl<T: IrType> ByteSerialize for BiniOp<T> {
