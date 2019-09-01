@@ -39,8 +39,8 @@ pub trait Instr {
       -> Option<usize>
     {
         // Encode the opcode for the instruction.
-        let opcode = self.op().opcode();
-        let mut sz = sink.send_byte(opcode.into_u8()) ?;
+        let mut sz = sink.send_byte(
+          Self::Op::opcode().into_u8()) ?;
 
         // Encode the operation payload.
         sz += self.op().send_to(sink) ?;

@@ -20,7 +20,7 @@ impl NopOp {
 impl Operation for NopOp {
     type Output = VoidTy;
 
-    fn opcode(&self) -> Opcode { Opcode::Nop }
+    fn opcode() -> Opcode { Opcode::Nop }
 
     fn num_operands(&self) -> u32 { 0 }
     fn send_name<S>(&self, sink: &mut S) -> Option<usize>

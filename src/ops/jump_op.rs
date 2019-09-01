@@ -24,7 +24,7 @@ impl TerminalOperation for JumpOp {
 impl Operation for JumpOp {
     type Output = VoidTy;
 
-    fn opcode(&self) -> Opcode { Opcode::Jump }
+    fn opcode() -> Opcode { Opcode::Jump }
 
     fn num_operands(&self) -> u32 { 0 }
     fn send_name<S>(&self, sink: &mut S) -> Option<usize>

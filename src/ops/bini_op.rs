@@ -42,7 +42,7 @@ impl<T: IrType> BiniOp<T> {
 impl<T: IrType> Operation for BiniOp<T> {
     type Output = T;
 
-    fn opcode(&self) -> Opcode {
+    fn opcode() -> Opcode {
         match T::ID {
             IrTypeId::Bool => Opcode::BiniBool,
             IrTypeId::Int32 => Opcode::BiniInt32,

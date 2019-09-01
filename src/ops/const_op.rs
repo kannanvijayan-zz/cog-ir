@@ -38,7 +38,7 @@ impl ConstInt64Op {
 impl Operation for ConstBoolOp {
     type Output = BoolTy;
 
-    fn opcode(&self) -> Opcode { Opcode::ConstBool }
+    fn opcode() -> Opcode { Opcode::ConstBool }
     fn num_operands(&self) -> u32 { 0 }
 
     fn send_name<S>(&self, sink: &mut S) -> Option<usize>
@@ -51,7 +51,7 @@ impl Operation for ConstBoolOp {
 impl Operation for ConstInt32Op {
     type Output = Int32Ty;
 
-    fn opcode(&self) -> Opcode { Opcode::ConstInt32 }
+    fn opcode() -> Opcode { Opcode::ConstInt32 }
     fn num_operands(&self) -> u32 { 0 }
 
     fn send_name<S>(&self, sink: &mut S) -> Option<usize>
@@ -64,7 +64,7 @@ impl Operation for ConstInt32Op {
 impl Operation for ConstInt64Op {
     type Output = Int64Ty;
 
-    fn opcode(&self) -> Opcode { Opcode::ConstInt64 }
+    fn opcode() -> Opcode { Opcode::ConstInt64 }
     fn num_operands(&self) -> u32 { 0 }
 
     fn send_name<S>(&self, sink: &mut S) -> Option<usize>

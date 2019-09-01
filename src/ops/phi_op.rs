@@ -22,7 +22,7 @@ impl<T: IrType> PhiOp<T> {
 impl<T: IrType> Operation for PhiOp<T> {
     type Output = T;
 
-    fn opcode(&self) -> Opcode {
+    fn opcode() -> Opcode {
         match T::ID {
             IrTypeId::Bool => Opcode::PhiBool,
             IrTypeId::Int32 => Opcode::PhiInt32,

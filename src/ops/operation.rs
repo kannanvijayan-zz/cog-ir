@@ -17,7 +17,7 @@ pub trait Operation: Sized + Clone + fmt::Display
     type Output: IrOutputType;
 
     /** Get the opcode for this operation. */
-    fn opcode(&self) -> Opcode;
+    fn opcode() -> Opcode;
 
     /** Get the number of expected operands. */
     fn num_operands(&self) -> u32;

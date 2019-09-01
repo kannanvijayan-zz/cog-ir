@@ -24,7 +24,7 @@ impl TerminalOperation for BranchOp {
 impl Operation for BranchOp {
     type Output = VoidTy;
 
-    fn opcode(&self) -> Opcode { Opcode::Branch }
+    fn opcode() -> Opcode { Opcode::Branch }
 
     fn num_operands(&self) -> u32 { 1 }
     fn send_name<S>(&self, sink: &mut S) -> Option<usize>

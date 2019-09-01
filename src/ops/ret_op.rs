@@ -22,7 +22,7 @@ impl<T: IrType> TerminalOperation for RetOp<T> {
 impl<T: IrType> Operation for RetOp<T> {
     type Output = VoidTy;
 
-    fn opcode(&self) -> Opcode {
+    fn opcode() -> Opcode {
         match T::ID {
             IrTypeId::Bool => Opcode::RetBool,
             IrTypeId::Int32 => Opcode::RetInt32,

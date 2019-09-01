@@ -43,7 +43,7 @@ impl<T: IrType> CmpOp<T> {
 impl<T: IrType> Operation for CmpOp<T> {
     type Output = BoolTy;
 
-    fn opcode(&self) -> Opcode {
+    fn opcode() -> Opcode {
         match T::ID {
             IrTypeId::Bool => Opcode::CmpBool,
             IrTypeId::Int32 => Opcode::CmpInt32,
