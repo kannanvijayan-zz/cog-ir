@@ -8,55 +8,6 @@ use crate::block::BlockId;
 
 use crate::leb128;
 
-/**
- * The offset of an instruction in the instruction stream.
- * Serves as the canonical id for an instruction.
- */
-#[derive(Clone, Copy, Debug)]
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
-pub struct InstrPosn(u32);
-impl InstrPosn {
-    const INVALID_VALUE: u32 = u32::max_value();
-
-    pub(crate) fn new(val: u32) -> InstrPosn {
-        debug_assert!(val != Self::INVALID_VALUE);
-        InstrPosn(val)
-    }
-    pub(crate) fn invalid() -> InstrPosn {
-        InstrPosn(Self::INVALID_VALUE)
-    }
-    pub(crate) fn as_u32(&self) -> u32 {
-        debug_assert!(self.0 != Self::INVALID_VALUE);
-        self.0
-    }
-}
-
-/**
- * The id of an instruction is just its position.
- */
-#[derive(Clone, Copy, Debug)]
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
-pub struct InstrId(InstrPosn);
-impl InstrId {
-    const INVALID_VALUE: u32 = u32::max_value();
-
-    pub(crate) fn new(posn: InstrPosn) -> InstrId {
-        InstrId(posn)
-    }
-    pub(crate) fn as_u32(&self) -> u32 { self.0.as_u32() }
-
-    pub(crate) fn invalid() -> InstrId {
-        InstrId(InstrPosn::invalid())
-    }
-}
-impl fmt::Display for InstrId {
-    fn fmt(&self, f: &mut fmt::Formatter)
-      -> Result<(), fmt::Error>
-    {
-        write!(f, "[Ins@{}]", self.0.as_u32())
-    }
-}
-
 /** Stores a writable instruction stream and presents
  * an API to write (append-only) instructions to it,
  * and to read from it. */
@@ -70,6 +21,21 @@ pub(crate) struct InstrStore {
     /** The number of instructions emitted. */
     num_instrs: u32,
 }
+
+/**
+ * The offset of an instruction in the instruction stream.
+ * Serves as the canonical id for an instruction.
+ */
+#[derive(Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+pub struct InstrPosn(u32);
+
+/**
+ * The id of an instruction is just its position.
+ */
+#[derive(Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+pub struct InstrId(InstrPosn);
 
 impl InstrStore {
     const INIT_INSTR_BYTES: usize = 256;
@@ -241,3 +207,40 @@ impl InstrStore {
         Some(id)
     }
 }
+
+impl InstrPosn {
+    const INVALID_VALUE: u32 = u32::max_value();
+
+    pub(crate) fn new(val: u32) -> InstrPosn {
+        debug_assert!(val != Self::INVALID_VALUE);
+        InstrPosn(val)
+    }
+    pub(crate) fn invalid() -> InstrPosn {
+        InstrPosn(Self::INVALID_VALUE)
+    }
+    pub(crate) fn as_u32(&self) -> u32 {
+        debug_assert!(self.0 != Self::INVALID_VALUE);
+        self.0
+    }
+}
+
+impl InstrId {
+    const INVALID_VALUE: u32 = u32::max_value();
+
+    pub(crate) fn new(posn: InstrPosn) -> InstrId {
+        InstrId(posn)
+    }
+    pub(crate) fn as_u32(&self) -> u32 { self.0.as_u32() }
+
+    pub(crate) fn invalid() -> InstrId {
+        InstrId(InstrPosn::invalid())
+    }
+}
+impl fmt::Display for InstrId {
+    fn fmt(&self, f: &mut fmt::Formatter)
+      -> Result<(), fmt::Error>
+    {
+        write!(f, "[Ins@{}]", self.0.as_u32())
+    }
+}
+
