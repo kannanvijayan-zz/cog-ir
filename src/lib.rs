@@ -10,6 +10,7 @@ mod instr;
 mod leb128;
 mod block;
 mod builder;
+mod defn;
 
 pub mod api {
     pub use crate::builder::{ Builder, BuildSession };
