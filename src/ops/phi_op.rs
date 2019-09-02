@@ -2,10 +2,6 @@
 use std::fmt;
 use std::marker::PhantomData;
 
-use crate::byte_sink::{
-    ByteSink, ByteSource, ByteSerialize,
-    Leb128U
-};
 use crate::ops::{ Opcode, Operation };
 use crate::ir_types::{ IrType, IrTypeId };
 
@@ -36,18 +32,10 @@ impl<T: IrType> Operation for PhiOp<T> {
     // given to the end instruction of each directd
     // predecessor block.
     fn num_operands(&self) -> u32 { 0 }
-}
 
-impl<T: IrType> ByteSerialize for PhiOp<T> {
-    fn send_to<S>(&self, _sink: &mut S) -> Option<usize>
-      where S: ByteSink
-    {
-        Some(0)
-    }
+    fn write_to(&self, vec: &mut Vec<u8>) {}
 
-    unsafe fn take_from<S>(_src: &mut S) -> (usize, Self)
-      where S: ByteSource
-    {
+    unsafe fn read_from(_bytes: &[u8]) -> (usize, Self) {
         (0, PhiOp::new())
     }
 }

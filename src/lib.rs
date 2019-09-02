@@ -4,11 +4,10 @@ extern crate log;
 
 extern crate env_logger;
 
-mod byte_sink;
 mod ir_types;
 mod ops;
 mod instr;
-mod instr_obj;
+mod leb128;
 mod block;
 mod builder;
 

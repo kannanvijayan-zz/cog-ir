@@ -4,8 +4,7 @@ use std::mem;
 
 use crate::block::{ Block, BlockId, BlockStore };
 use crate::ops::{ Operation, TerminalOperation };
-use crate::instr::InstrId;
-use crate::instr_obj::{ InstrObj, EndInstrObj };
+use crate::instr::{ InstrId, InstrStore };
 
 use crate::ops::{
     NopOp, PhiOp,
@@ -22,6 +21,9 @@ use crate::ir_types::{
 };
 
 pub struct Builder {
+    // The instruction store.
+    instr_store: InstrStore,
+
     // The block store.
     block_store: BlockStore,
 
@@ -43,11 +45,12 @@ impl Builder {
         debug!("SizeOf(Block) = {}",
                mem::size_of::<Block>());
 
+        let instr_store = InstrStore::new();
         let block_store = BlockStore::new();
         let subgraph_decls =
           Vec::with_capacity(Self::SUBGRAPH_DECLS_CAP);
 
-        Builder { block_store, subgraph_decls }
+        Builder { instr_store, block_store, subgraph_decls }
     }
 
     pub(crate) fn build<F>(f: F) -> Builder
@@ -59,7 +62,8 @@ impl Builder {
 
         let mut sess =
           BuildSession::new(&mut builder,
-                            BlockRef::new(start_block));
+                            BlockRef::new(start_block),
+                            /* emitted_phis = */ 0);
         f(&mut sess);
 
         // At the end of the session, all blocks must
@@ -82,7 +86,7 @@ impl Builder {
     pub fn dump_stats(&self, name: &'static str) {
         debug!("Builder {} instrs={} blocks={}",
                name,
-               self.block_store.instr_bytes_len(),
+               self.instr_store.instr_bytes_len(),
                self.block_store.total_blocks());
     }
 }
@@ -102,6 +106,9 @@ pub struct BuildSession<'bs> {
     // The current block being built.
     cur_block: BlockRef<'bs>,
 
+    // The number phi instructions emitted in this block
+    emitted_phis: u32,
+
     // The start index into subgraph_blocks for start
     // of the blocks declared by this subgraph.
     //
@@ -111,35 +118,30 @@ pub struct BuildSession<'bs> {
     // The number of entered blocks in this subgraph.
     //
     // Initialized to 0 at session start.
-    subgraph_entered: u32
+    subgraph_entered: u32,
 }
 
 impl<'bs> BuildSession<'bs> {
     fn new(builder: &'bs mut Builder,
-           cur_block: BlockRef<'bs>)
+           cur_block: BlockRef<'bs>,
+           emitted_phis: u32)
       -> BuildSession<'bs>
     {
         let subgraph_start =
           builder.subgraph_decls.len() as u32;
 
         BuildSession {
-            builder, cur_block, subgraph_start,
+            builder, cur_block, emitted_phis,
+            subgraph_start,
             subgraph_entered: 0
         }
-    }
-
-    fn block_store(&self) -> &BlockStore {
-        &self.builder.block_store
-    }
-    fn mut_block_store(&mut self) -> &mut BlockStore {
-        &mut self.builder.block_store
     }
 
     // Retrieve the a reference to the actual
     // block from a `BlockRef` index.
     fn get_block(&self, block: BlockRef<'bs>) -> &Block {
         unsafe {
-            self.block_store().get_block(block.0)
+            self.builder.block_store.get_block(block.0)
         }
     }
 
@@ -165,7 +167,9 @@ impl<'bs> BuildSession<'bs> {
     fn get_subgraph_block(&self, offset: u32) -> &Block {
         let idx = self.subgraph_cur_idx(offset) as usize;
         let block_id = self.builder.subgraph_decls[idx];
-        unsafe { self.block_store().get_block(block_id) }
+        unsafe {
+          self.builder.block_store.get_block(block_id)
+        }
     }
 
     // Test if the current subgraph is complete.
@@ -194,7 +198,7 @@ impl<'bs> BuildSession<'bs> {
     pub fn decl_plain_block(&mut self, num_phis: u32)
       -> BlockRef<'bs>
     {
-        let id = self.mut_block_store()
+        let id = self.builder.block_store
                      .decl_plain_block(num_phis);
         self.builder.subgraph_decls.push(id);
         debug!("Decl plain block phis={} id={}",
@@ -206,7 +210,7 @@ impl<'bs> BuildSession<'bs> {
     pub fn decl_start_block(&mut self)
       -> BlockRef<'bs>
     {
-        let id = self.mut_block_store()
+        let id = self.builder.block_store
                      .decl_start_block();
         self.builder.subgraph_decls.push(id);
         BlockRef::new(id)
@@ -216,7 +220,7 @@ impl<'bs> BuildSession<'bs> {
     pub fn decl_loop_head(&mut self, num_phis: u32)
       -> BlockRef<'bs>
     {
-        let id = self.mut_block_store()
+        let id = self.builder.block_store
                      .decl_loop_head(num_phis);
         self.builder.subgraph_decls.push(id);
         BlockRef::new(id)
@@ -232,7 +236,9 @@ impl<'bs> BuildSession<'bs> {
         assert!(block == self.next_spec_block());
 
         unsafe {
-            self.mut_block_store().enter_block(block.0);
+            self.builder.block_store.enter_block(
+              block.id(),
+              self.builder.instr_store.front_instr_id());
         }
 
         // Update the current block, and the
@@ -240,6 +246,9 @@ impl<'bs> BuildSession<'bs> {
         // after it.
         self.cur_block = block;
         self.subgraph_entered += 1;
+
+        // Reset the emitted phis for a new block.
+        self.emitted_phis = 0;
     }
 
     // Enter the next block.  The current block
@@ -261,10 +270,13 @@ impl<'bs> BuildSession<'bs> {
         // The cur_block for a new session is borrowed
         // from the cur_block for the current session.
         let cur_block = self.cur_block;
+        let emitted_phis = self.emitted_phis;
         let (new_block_id, r) = {
             let mut sub_sess: BuildSession<'cs> =
               BuildSession::new(
-                &mut self.builder, cur_block);
+                &mut self.builder,
+                cur_block,
+                emitted_phis);
             let r = f(&mut sub_sess);
             sub_sess.assert_complete();
 
@@ -311,7 +323,7 @@ impl<'bs> BuildSession<'bs> {
 
         // Immediately enter a subgraph.
         self.def_subgraph(move |cs| {
-            let r = f(cs);
+            let result = f(cs);
 
             // When defining a loop subgraph, the entire
             // subgraph must be complete by the return
@@ -327,14 +339,13 @@ impl<'bs> BuildSession<'bs> {
               cs.get_block(loop_block).has_finished());
 
             unsafe {
-                cs.mut_block_store()
+                cs.builder.block_store
                   .finish_loop(loop_block.id());
             }
 
-            r
+            result
         })
     }
-
 
     fn emit_instr<'cs: 'bs, OP: Operation>(&mut self,
         op: OP, operands: &[Defn<'cs>])
@@ -342,9 +353,14 @@ impl<'bs> BuildSession<'bs> {
       where OP: Operation
     {
         assert!(! self.get_cur_block().has_finished());
-        let (_block_id, instr_id) =
-          self.mut_block_store().emit_instr(
-            InstrObj::new(&op, operands)) ?;
+
+        // Add the instruction to the instr store.
+        let instr_id =
+          self.builder.instr_store.emit_instr(
+            &op, operands) ?;
+
+        // No changes need to be made to the block store.
+
         Some(TypedDefn::new(instr_id))
     }
 
@@ -356,10 +372,18 @@ impl<'bs> BuildSession<'bs> {
       where OP: TerminalOperation + Operation
     {
         assert!(! self.get_cur_block().has_finished());
-        let (_block_id, instr_id) =
-          self.mut_block_store().emit_end(
-            EndInstrObj::new(&op, operands, targets)) ?;
-        debug_assert!(self.get_cur_block().has_finished());
+
+        // Add the instruction to the instr store.
+        let instr_id =
+          self.builder.instr_store.emit_end(
+            &op, operands, targets) ?;
+
+        // Mark the block as finished.
+        unsafe {
+            self.builder.block_store.finish_block(
+              self.cur_block.id(), instr_id);
+        }
+
         Some(instr_id)
     }
 
@@ -369,20 +393,17 @@ impl<'bs> BuildSession<'bs> {
     pub fn emit_const_bool(&mut self, b: bool)
       -> TypedDefn<'bs, BoolTy>
     {
-        self.emit_instr::<ConstBoolOp>(
-          ConstBoolOp::new(b), &[]).unwrap()
+        self.emit_instr(ConstBoolOp::new(b), &[]).unwrap()
     }
     pub fn emit_const_int32(&mut self, i: u32)
       -> TypedDefn<'bs, Int32Ty>
     {
-        self.emit_instr::<ConstInt32Op>(
-          ConstInt32Op::new(i), &[]).unwrap()
+        self.emit_instr(ConstInt32Op::new(i), &[]).unwrap()
     }
     pub fn emit_const_int64(&mut self, i: u64)
       -> TypedDefn<'bs, Int64Ty>
     {
-        self.emit_instr::<ConstInt64Op>(
-          ConstInt64Op::new(i), &[]).unwrap()
+        self.emit_instr(ConstInt64Op::new(i), &[]).unwrap()
     }
 
     pub fn emit_cmp<'cs: 'bs, T: IrType>(&mut self,
@@ -393,50 +414,50 @@ impl<'bs> BuildSession<'bs> {
     {
         let lhs = lhs.untyped_defn();
         let rhs = rhs.untyped_defn();
-        self.emit_instr::<CmpOp<T>>(
-          CmpOp::new(kind), &[lhs, rhs]).unwrap()
+        self.emit_instr(
+          CmpOp::<T>::new(kind), &[lhs, rhs]).unwrap()
     }
     pub fn emit_lt<'cs: 'bs, T: IrType>(&mut self,
         lhs: TypedDefn<'cs, T>,
         rhs: TypedDefn<'cs, T>)
       -> TypedDefn<'bs, BoolTy>
     {
-        self.emit_cmp::<T>(CmpKind::Lt, lhs, rhs)
+        self.emit_cmp(CmpKind::Lt, lhs, rhs)
     }
     pub fn emit_le<'cs: 'bs, T: IrType>(&mut self,
         lhs: TypedDefn<'cs, T>,
         rhs: TypedDefn<'cs, T>)
       -> TypedDefn<'bs, BoolTy>
     {
-        self.emit_cmp::<T>(CmpKind::Le, lhs, rhs)
+        self.emit_cmp(CmpKind::Le, lhs, rhs)
     }
     pub fn emit_eq<'cs: 'bs, T: IrType>(&mut self,
         lhs: TypedDefn<'cs, T>,
         rhs: TypedDefn<'cs, T>)
       -> TypedDefn<'bs, BoolTy>
     {
-        self.emit_cmp::<T>(CmpKind::Eq, lhs, rhs)
+        self.emit_cmp(CmpKind::Eq, lhs, rhs)
     }
     pub fn emit_ne<'cs: 'bs, T: IrType>(&mut self,
         lhs: TypedDefn<'cs, T>,
         rhs: TypedDefn<'cs, T>)
       -> TypedDefn<'bs, BoolTy>
     {
-        self.emit_cmp::<T>(CmpKind::Ne, lhs, rhs)
+        self.emit_cmp(CmpKind::Ne, lhs, rhs)
     }
     pub fn emit_ge<'cs: 'bs, T: IrType>(&mut self,
         lhs: TypedDefn<'cs, T>,
         rhs: TypedDefn<'cs, T>)
       -> TypedDefn<'bs, BoolTy>
     {
-        self.emit_cmp::<T>(CmpKind::Ge, lhs, rhs)
+        self.emit_cmp(CmpKind::Ge, lhs, rhs)
     }
     pub fn emit_gt<'cs: 'bs, T: IrType>(&mut self,
         lhs: TypedDefn<'cs, T>,
         rhs: TypedDefn<'cs, T>)
       -> TypedDefn<'bs, BoolTy>
     {
-        self.emit_cmp::<T>(CmpKind::Gt, lhs, rhs)
+        self.emit_cmp(CmpKind::Gt, lhs, rhs)
     }
 
     pub fn emit_bini<'cs: 'bs, T: IrType>(&mut self,
@@ -447,7 +468,7 @@ impl<'bs> BuildSession<'bs> {
     {
         let lhs = lhs.untyped_defn();
         let rhs = rhs.untyped_defn();
-        self.emit_instr::<BiniOp<T>>(
+        self.emit_instr(
           BiniOp::new(kind), &[lhs, rhs]).unwrap()
     }
     pub fn emit_add<'cs: 'bs, T: IrType>(&mut self,
@@ -455,68 +476,67 @@ impl<'bs> BuildSession<'bs> {
         rhs: TypedDefn<'cs, T>)
       -> TypedDefn<'bs, T>
     {
-        self.emit_bini::<T>(BiniKind::Add, lhs, rhs)
+        self.emit_bini(BiniKind::Add, lhs, rhs)
     }
     pub fn emit_sub<'cs: 'bs, T: IrType>(&mut self,
         lhs: TypedDefn<'cs, T>,
         rhs: TypedDefn<'cs, T>)
       -> TypedDefn<'bs, T>
     {
-        self.emit_bini::<T>(BiniKind::Sub, lhs, rhs)
+        self.emit_bini(BiniKind::Sub, lhs, rhs)
     }
     pub fn emit_mul<'cs: 'bs, T: IrType>(&mut self,
         lhs: TypedDefn<'cs, T>,
         rhs: TypedDefn<'cs, T>)
       -> TypedDefn<'bs, T>
     {
-        self.emit_bini::<T>(BiniKind::Mul, lhs, rhs)
+        self.emit_bini(BiniKind::Mul, lhs, rhs)
     }
     pub fn emit_and<'cs: 'bs, T: IrType>(&mut self,
         lhs: TypedDefn<'cs, T>,
         rhs: TypedDefn<'cs, T>)
       -> TypedDefn<'bs, T>
     {
-        self.emit_bini::<T>(BiniKind::And, lhs, rhs)
+        self.emit_bini(BiniKind::And, lhs, rhs)
     }
     pub fn emit_or<'cs: 'bs, T: IrType>(&mut self,
         lhs: TypedDefn<'cs, T>,
         rhs: TypedDefn<'cs, T>)
       -> TypedDefn<'bs, T>
     {
-        self.emit_bini::<T>(BiniKind::Or, lhs, rhs)
+        self.emit_bini(BiniKind::Or, lhs, rhs)
     }
     pub fn emit_xor<'cs: 'bs, T: IrType>(&mut self,
         lhs: TypedDefn<'cs, T>,
         rhs: TypedDefn<'cs, T>)
       -> TypedDefn<'bs, T>
     {
-        self.emit_bini::<T>(BiniKind::Xor, lhs, rhs)
+        self.emit_bini(BiniKind::Xor, lhs, rhs)
     }
 
     pub fn emit_phi<T: IrType>(&mut self)
       -> TypedDefn<'bs, T>
     {
         assert!(! self.get_cur_block().has_finished());
-        let (_block_id, instr_id) =
-          self.mut_block_store().emit_phi::<T>()
-            .unwrap();
-        TypedDefn::new(instr_id)
+        debug_assert!(self.emitted_phis
+                        < self.get_cur_block().num_phis());
+        self.emitted_phis += 1;
+        self.emit_instr(PhiOp::<T>::new(), &[]).unwrap()
     }
 
     pub fn ret<'cs: 'bs, T: IrType>(&mut self,
         val: TypedDefn<'cs, T>)
     {
-        self.emit_end::<RetOp<T>>(
-          RetOp::new(), &[val.untyped_defn()],
-            /* targets = */ &[]).unwrap();
+        self.emit_end(
+          RetOp::<T>::new(), &[val.untyped_defn()],
+          /* targets = */ &[]).unwrap();
     }
 
     pub fn jump<'cs: 'bs>(&mut self,
         target: BlockRef<'cs>, phis: &[Defn<'cs>])
     {
-        self.emit_end::<JumpOp>(
-          JumpOp::new(), &[],
-            /* targets = */ &[(target, phis)]).unwrap();
+        self.emit_end(JumpOp::new(), &[],
+          /* targets = */ &[(target, phis)]).unwrap();
     }
 
     pub fn branch<'cs: 'bs>(&mut self,
@@ -529,8 +549,7 @@ impl<'bs> BuildSession<'bs> {
         false_phis: &[Defn<'cs>])
     {
         let bit = bit.untyped_defn();
-        self.emit_end::<BranchOp>(
-          BranchOp::new(), &[bit],
+        self.emit_end(BranchOp::new(), &[bit],
           /* targets = */ &[
             (if_true, true_phis),
             (if_false, false_phis)]).unwrap();

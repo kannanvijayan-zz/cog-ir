@@ -3,9 +3,6 @@ use std::fmt;
 use std::mem;
 use std::marker::PhantomData;
 
-use crate::byte_sink::{
-    ByteSink, ByteSource, ByteSerialize,
-};
 use crate::ops::{ Operation, Opcode };
 use crate::ir_types::{ IrType, IrTypeId };
 
@@ -52,19 +49,14 @@ impl<T: IrType> Operation for BiniOp<T> {
     }
 
     fn num_operands(&self) -> u32 { 2 }
-}
 
-impl<T: IrType> ByteSerialize for BiniOp<T> {
-    fn send_to<S>(&self, sink: &mut S) -> Option<usize>
-      where S: ByteSink
-    {
-        sink.send_byte(self.0 as u8)
+    fn write_to(&self, vec: &mut Vec<u8>) {
+        vec.push(self.0 as u8);
     }
 
-    unsafe fn take_from<S>(src: &mut S) -> (usize, Self)
-      where S: ByteSource
-    {
-        let b = src.take();
+    unsafe fn read_from(bytes: &[u8]) -> (usize, Self) {
+        debug_assert!(bytes.len() >= 1);
+        let b = *bytes.get_unchecked(0);
         assert!(BiniKind::is_valid_code(b));
         (1, BiniOp::new(BiniKind::from_u8(b)))
     }

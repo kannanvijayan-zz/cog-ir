@@ -1,9 +1,6 @@
 
 use std::fmt;
 
-use crate::byte_sink::{
-    ByteSink, ByteSource, ByteSerialize
-};
 use crate::ops::{ Opcode, Operation };
 use crate::ir_types::VoidTy;
 
@@ -23,18 +20,10 @@ impl Operation for NopOp {
     fn opcode() -> Opcode { Opcode::Nop }
 
     fn num_operands(&self) -> u32 { 0 }
-}
 
-impl ByteSerialize for NopOp {
-    fn send_to<S>(&self, _sink: &mut S) -> Option<usize>
-      where S: ByteSink
-    {
-        Some(0)
-    }
+    fn write_to(&self, vec: &mut Vec<u8>) {}
 
-    unsafe fn take_from<S>(_src: &mut S) -> (usize, Self)
-      where S: ByteSource
-    {
+    unsafe fn read_from(_bytes: &[u8]) -> (usize, Self) {
         (0, NopOp::new())
     }
 }

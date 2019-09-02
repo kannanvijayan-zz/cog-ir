@@ -3,8 +3,8 @@ use std::fmt;
 
 use crate::ops::{ Operation, TerminalOperation };
 use crate::block::BlockId;
-use crate::byte_sink::{ ByteSink, ByteSerialize, Leb128U };
-use crate::instr_obj::InstrObj;
+
+use crate::leb128;
 
 /**
  * The offset of an instruction in the instruction stream.
@@ -21,91 +21,142 @@ pub struct InstrPosn(u32);
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct InstrId(InstrPosn);
 
-/** Instr is a helper trait handle `InstrObj` values,
- * but internalize the operation and definition types,
- * for code hygiene purposes.
- *
- * The only specializer is `InstrObj`, which exposes
- * the operation and definition types in the type-name.
- */
-pub trait Instr {
-    type Op: Operation;
-    type Def: Copy + Into<InstrId>;
+/** Stores a writable instruction stream and presents
+ * an API to write (append-only) instructions to it,
+ * and to read from it. */
+pub(crate) struct InstrStore {
+    /** The raw instruction bytes. */
+    instr_bytes: Vec<u8>,
 
-    fn op(&self) -> &Self::Op;
-    fn inputs(&self) -> &[Self::Def];
+    /** Max len of vec. */
+    max_len: u32,
 
-    fn send_instr<S: ByteSink>(&self, sink: &mut S)
-      -> Option<usize>
+    /** The number of instructions emitted. */
+    num_instrs: u32,
+}
+
+impl InstrStore {
+    const INIT_INSTR_BYTES: usize = 256;
+    const MAX_INSTR_BYTES: usize = 0xff_ffff;
+
+    pub(crate) fn new() -> InstrStore {
+        let max_len = Self::MAX_INSTR_BYTES as u32;
+        let instr_bytes =
+          Vec::with_capacity(Self::INIT_INSTR_BYTES);
+        InstrStore { instr_bytes, max_len, num_instrs: 0 }
+    }
+
+    fn within_limits(&self) -> bool {
+        self.instr_bytes.len() <= (self.max_len as usize)
+    }
+
+    fn front_instr_posn(&self) -> InstrPosn {
+        debug_assert!(self.within_limits());
+        InstrPosn::new(self.instr_bytes.len() as u32)
+    }
+    pub(crate) fn front_instr_id(&self) -> InstrId {
+        InstrId::new(self.front_instr_posn())
+    }
+
+    pub(crate) fn instr_bytes_len(&self) -> usize {
+        self.instr_bytes.len()
+    }
+
+    fn append_instr_impl<OP, DEF>(
+        &mut self, op: &OP, inputs: &[DEF])
+      where OP: Operation, DEF: Copy + Into<InstrId>
     {
+        debug_assert!(self.within_limits());
+
         // Encode the opcode for the instruction.
-        let mut sz = sink.send_byte(
-          Self::Op::opcode().into_u8()) ?;
+        self.instr_bytes.push(
+          OP::opcode().into_u8());
 
         // Encode the operation payload.
-        sz += self.op().send_to(sink) ?;
+        op.write_to(&mut self.instr_bytes);
 
         // Encode each operand.
-        for opnd in self.inputs() {
-            let opnd_id = (*opnd).into();
-            sz +=
-              Leb128U::from(opnd_id.as_u32())
-                .send_to(sink) ?;
+        for inp in inputs {
+            leb128::write_leb128u(
+                (*inp).into().as_u32(),
+                &mut self.instr_bytes);
         }
-
-        Some(sz)
     }
-}
 
-/**
- * Similar to the `Instr` trait, this trait
- * specialized for `EndInstrObj` values, and
- * internalizes the `Op`, `Def`, and `Blk` traits,
- * for ease of reference in code.
- */
-pub trait EndInstr {
-    type Op: TerminalOperation + Operation;
-    type Def: Copy + Into<InstrId>;
-    type Blk: Copy + Into<BlockId>;
-
-    fn op(&self) -> &Self::Op;
-    fn inputs(&self) -> &[Self::Def];
-    fn targets(&self) -> &[(Self::Blk, &[Self::Def])];
-
-    fn send_end<S: ByteSink>(&self, sink: &mut S)
-      -> Option<usize>
+    fn append_targets_impl<BLK, DEF>(
+        &mut self, targets: &[(BLK, &[DEF])])
+      where BLK: Copy + Into<BlockId>,
+            DEF: Copy + Into<InstrId>
     {
-        // Send the main instruction body first.
-        let mut sz =
-          InstrObj::new(self.op(), self.inputs())
-            .send_instr(sink) ?;
+        for &(target_blk, phi_defs) in targets.iter() {
+            // Write the target block-id.
+            leb128::write_leb128u(
+              target_blk.into().as_u32(),
+              &mut self.instr_bytes);
 
-        // Encode target blocks and their input phis.
-        for tgt_pair in self.targets() {
-            let tgt_id = tgt_pair.0.into();
-            let phi_defns = tgt_pair.1;
+            // Write out # of phi-defs.
+            debug_assert!(
+              phi_defs.len() <= Self::MAX_INSTR_BYTES);
+            leb128::write_leb128u(
+                phi_defs.len() as u32,
+                &mut self.instr_bytes);
 
-            // Write out the target block id.
-            sz += Leb128U::from(tgt_id.as_u32())
-                          .send_to(sink) ?;
-
-            // Write out all the phi definitions for this
-            // block, prefixed with their count.
-            // TODO: ensure that defn_list is small.
-            sz += Leb128U::from(phi_defns.len() as u64)
-                          .send_to(sink) ?;
-
-            for defn in phi_defns {
-                let id: InstrId = (*defn).into();
-                sz += Leb128U::from(id.as_u32())
-                              .send_to(sink) ?;
+            // Write out each phi def for the target.
+            for def in phi_defs {
+                leb128::write_leb128u(
+                    (*def).into().as_u32(),
+                    &mut self.instr_bytes);
             }
         }
+    }
 
-        Some(sz)
+    pub(crate) fn emit_instr<OP, DEF>(
+        &mut self, op: &OP, inputs: &[DEF])
+      -> Option<InstrId>
+      where OP: Operation,
+            DEF: Copy + Into<InstrId>
+    {
+        if ! self.within_limits() { return None; }
+
+        // Save the offset of the instruction
+        let id = self.front_instr_id();
+
+        // Append the instruction encoding, and
+        // the list of input operands.
+        self.append_instr_impl(op, inputs);
+
+        if ! self.within_limits() { return None; }
+
+        Some(id)
+    }
+
+    pub(crate) fn emit_end<OP, DEF, BLK>(
+        &mut self,
+        op: &OP,
+        inputs: &[DEF],
+        targets: &[(BLK, &[DEF])])
+      -> Option<InstrId>
+      where OP: TerminalOperation,
+            DEF: Copy + Into<InstrId>,
+            BLK: Copy + Into<BlockId>
+    {
+        if ! self.within_limits() { return None; }
+
+        // Save the offset of the instruction
+        let id = self.front_instr_id();
+
+        // Append the instruction encoding, and
+        // the list of input operands.
+        self.append_instr_impl(op, inputs);
+
+        // Append the (target, phi_defs) list.
+        self.append_targets_impl(targets);
+
+        if ! self.within_limits() { return None; }
+
+        Some(id)
     }
 }
-
 
 impl InstrPosn {
     const INVALID_VALUE: u32 = u32::max_value();
@@ -122,15 +173,6 @@ impl InstrPosn {
         self.0
     }
 }
-
-impl fmt::Display for InstrPosn {
-    fn fmt(&self, f: &mut fmt::Formatter)
-      -> Result<(), fmt::Error>
-    {
-        write!(f, "Ins@{}", self.0)
-    }
-}
-
 impl InstrId {
     const INVALID_VALUE: u32 = u32::max_value();
 
@@ -141,6 +183,14 @@ impl InstrId {
 
     pub(crate) fn invalid() -> InstrId {
         InstrId(InstrPosn::invalid())
+    }
+}
+
+impl fmt::Display for InstrPosn {
+    fn fmt(&self, f: &mut fmt::Formatter)
+      -> Result<(), fmt::Error>
+    {
+        write!(f, "Ins@{}", self.0)
     }
 }
 impl fmt::Display for InstrId {

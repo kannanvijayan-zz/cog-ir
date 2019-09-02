@@ -1,9 +1,5 @@
 
-use crate::ir_types::IrType;
-use crate::ops::PhiOp;
-use crate::ops::Operation;
-use crate::instr::{ InstrPosn, InstrId, Instr, EndInstr };
-use crate::instr_obj::InstrObj;
+use crate::instr::{ InstrId, InstrPosn };
 
 /**
  * A block-id identifies a block by declaration id.
@@ -89,6 +85,17 @@ impl Block {
     }
     pub(crate) fn id(&self) -> BlockId { self.id }
 
+    pub(crate) fn num_phis(&self) -> u32 {
+        match self.variant {
+          BlockVariant::Plain { num_phis }
+            => num_phis,
+          BlockVariant::Loop { num_phis, loop_no: _ }
+            => num_phis,
+          BlockVariant::Start { start_no }
+            => 0
+        }
+    }
+
     pub fn is_start(&self) -> bool {
         match self.variant {
             BlockVariant::Start{ start_no: _ }
@@ -150,7 +157,6 @@ impl Block {
  * order, and a secondary RPO index of the first vector.
  */
 pub struct BlockStore {
-    instr_bytes: Vec<u8>,
     decl_blocks: Vec<Block>,
     rpo_index: Vec<BlockId>,
     cur_block_id: BlockId,
@@ -169,8 +175,6 @@ impl BlockStore {
     const MAX_INSTR_BYTES: u32 = 0xff_ffff;
 
     pub fn new() -> BlockStore {
-        let instr_bytes =
-          Vec::with_capacity(Self::INSTR_BYTES_CAP);
         let decl_blocks =
           Vec::with_capacity(Self::DECL_BLOCKS_CAP);
         let rpo_index =
@@ -179,8 +183,7 @@ impl BlockStore {
         let cur_block_id = BlockId(0);
 
         let mut bs = BlockStore {
-            instr_bytes, decl_blocks,
-            rpo_index, cur_block_id,
+            decl_blocks, rpo_index, cur_block_id,
             num_starts: 0_u16, num_loops: 0_u16,
             total_phis: 0_u32
         };
@@ -188,23 +191,15 @@ impl BlockStore {
         // Declare a start block and enter it
         // immediately.
         let start_id = bs.decl_start_block();
-        unsafe {
-            bs.enter_block(start_id);
-        };
+        let start_ins = InstrId::new(InstrPosn::new(0));
+        unsafe { bs.enter_block(start_id, start_ins) };
+
         bs
     }
 
     pub(crate) fn start_block_id(&self) -> BlockId {
         debug_assert!(self.decl_blocks.len() > 0);
         BlockId(0)
-    }
-
-    pub(crate) fn instr_bytes_len(&self) -> usize {
-        self.instr_bytes.len()
-    }
-
-    fn front_instr_posn(&self) -> InstrPosn {
-        InstrPosn::new(self.instr_bytes.len() as u32)
     }
 
     // Declare a new block and get an index for it.
@@ -227,8 +222,8 @@ impl BlockStore {
         self.decl_blocks.iter()
     }
 
-    pub(crate) fn decl_plain_block(&mut self,
-        num_phis: u32)
+    pub(crate) fn decl_plain_block(
+        &mut self, num_phis: u32)
       -> BlockId
     {
         let id = self.decl_block(
@@ -275,8 +270,8 @@ impl BlockStore {
                         < self.decl_blocks.len());
         self.decl_blocks.get_unchecked(id.0 as usize)
     }
-    pub(crate) unsafe fn get_mut_block(&mut self,
-        id: BlockId)
+    pub(crate) unsafe fn get_mut_block(
+        &mut self, id: BlockId)
       -> &mut Block
     {
         debug_assert!((id.0 as usize)
@@ -286,11 +281,9 @@ impl BlockStore {
 
     // Start specifying a block.  Unsafe for unchecked
     // access to the declared blocks vec.
-    pub unsafe fn enter_block(&mut self, id: BlockId) {
-        // First instr for block is the front instr.
-        let first_ins_pos = self.front_instr_posn();
-        let first_ins = InstrId::new(first_ins_pos);
-
+    pub(crate) unsafe fn enter_block(
+        &mut self, id: BlockId, first_ins: InstrId)
+    {
         // Compute global ordering of block.
         let order: u32 = self.rpo_index.len() as u32;
 
@@ -310,140 +303,18 @@ impl BlockStore {
     }
 
     // Finish specifying a block.
-    unsafe fn finish_block(&mut self,
-        id: BlockId, last_ins: InstrId)
+    pub(crate) unsafe fn finish_block(
+        &mut self, id: BlockId, last_ins: InstrId)
     {
         // Update the block state.
         self.get_mut_block(id).set_finished(last_ins);
     }
 
     // Finish specifying a block.
-    pub(crate) unsafe fn finish_loop(&mut self,
-        id: BlockId)
+    pub(crate) unsafe fn finish_loop(
+        &mut self, id: BlockId)
     {
         // Update the block state.
         self.get_mut_block(id).set_loop_complete();
-    }
-
-    pub(crate) fn emit_instr<I: Instr>(&mut self,
-        instr: I)
-      -> Option<(BlockId, InstrId)>
-    {
-        // Get the location and number of the instr.
-        let block_id = self.cur_block_id;
-        let instr_posn = self.front_instr_posn();
-        let instr_id = InstrId::new(instr_posn);
-
-        // Encode the instruction bytes.
-        let sz = instr.send_instr(&mut self.instr_bytes) ?;
-
-        unsafe { self.get_mut_block(block_id) }
-          .set_add_instr(instr_id);
-
-        debug_assert!(
-          (instr_posn.as_u32() + (sz as u32))
-            == (self.instr_bytes.len() as u32));
-
-        debug!("Emit {} - {}", instr_posn, instr.op());
-        for (i, def) in instr.inputs().iter().enumerate() {
-            let instr_id: InstrId = (*def).into();
-            debug!("  in{} - {}", i, instr_id);
-        }
-
-        // Return the block and instruction.
-        Some((block_id, instr_id))
-    }
-
-    pub(crate) fn emit_phi<T: IrType>(&mut self)
-      -> Option<(BlockId, InstrId)>
-    {
-        // Get the location and number of the instr.
-        let block_id = self.cur_block_id;
-        let instr_posn = self.front_instr_posn();
-        let instr_id = InstrId::new(instr_posn);
-
-        // Encode the instruction bytes.
-        let phi_op = PhiOp::<T>::new();
-        let sz = InstrObj::<PhiOp<T>, InstrId>
-                         ::new(&phi_op, &[])
-                  .send_instr(&mut self.instr_bytes) ?;
-
-        unsafe { self.get_mut_block(block_id) }
-          .set_add_instr(instr_id);
-
-        debug_assert!(
-          (instr_posn.as_u32() + (sz as u32))
-            == (self.instr_bytes.len() as u32));
-
-        debug!("Emit {} - {}", instr_posn, phi_op);
-
-        // Return the block and instruction.
-        Some((block_id, instr_id))
-    }
-
-    pub(crate) fn emit_end<EI: EndInstr>(&mut self,
-        end_instr: EI)
-      -> Option<(BlockId, InstrId)>
-    {
-        // Get the location and number of the instr.
-        let block_id = self.cur_block_id;
-        let instr_posn = self.front_instr_posn();
-        let instr_id = InstrId::new(instr_posn);
-
-        // Encode the instruction data.
-        let sz =
-          end_instr.send_end(&mut self.instr_bytes) ?;
-
-        debug!("Emit {} - {}", instr_posn, end_instr.op());
-
-        // increment target blocks input edge count.
-        for tgt_pair in end_instr.targets() {
-            let tgt_id = tgt_pair.0.into();
-            let phi_defns = tgt_pair.1;
-            let num_phi_defns = phi_defns.len();
-            let tgt_ref = unsafe {
-              self.get_mut_block(tgt_id)
-            };
-
-            // Verify that the targets are valid.
-
-            // If the target block has been entered
-            // already, it must be a loop head block
-            // for an incomplete loop.
-            if tgt_ref.has_entered() {
-                if ! tgt_ref.is_loop() {
-                    panic!("Backjump to nonloop block {}",
-                           tgt_id.as_u32());
-                }
-                if tgt_ref.has_loop_complete() {
-                    panic!("Backjump to complete loop \
-                            with head block {}",
-                           tgt_id.as_u32());
-                }
-            }
-
-            // Increment the target's input edge
-            // count.
-            tgt_ref.incr_input_edges();
-            debug!("  => target {} phis={}",
-                   tgt_id.as_u32(), num_phi_defns);
-            for (i, defn) in phi_defns.iter().enumerate() {
-                let id: InstrId = (*defn).into();
-                debug!("    phi {} arg: {}", i, id);
-            }
-
-        }
-
-        // Finish the current block.
-        unsafe { self.finish_block(block_id, instr_id) };
-
-        debug_assert!(
-          (instr_posn.as_u32() + (sz as u32))
-            == (self.instr_bytes.len() as u32));
-
-        debug!("BlockEnd {} @{}",
-               block_id.as_u32(), self.instr_bytes.len());
-
-        Some((block_id, instr_id))
     }
 }
