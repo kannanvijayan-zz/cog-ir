@@ -101,5 +101,5 @@ fn main() {
         bs.ret(j);
     });
 
-    builder.dump_stats("test1(simple loop)");
+    builder.dump_stats("test1(simple subgraph)");
 }

@@ -1,4 +1,5 @@
 
+use std::fmt;
 use std::marker::PhantomData;
 
 use crate::instr::InstrId;
@@ -17,6 +18,13 @@ impl<'a> Defn<'a> {
 }
 impl<'a> Into<InstrId> for Defn<'a> {
     fn into(self) -> InstrId { self.0 }
+}
+impl<'a> fmt::Display for Defn<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter)
+      -> Result<(), fmt::Error>
+    {
+        write!(f, "Def@{}", self.as_u32())
+    }
 }
 
 /** A typed definition. */
