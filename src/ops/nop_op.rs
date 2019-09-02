@@ -2,7 +2,7 @@
 use std::fmt;
 
 use crate::ops::{ Opcode, Operation };
-use crate::ir_types::VoidTy;
+use crate::ir_types::IrTypeId;
 
 /**
  * The Nop instr does nothing.
@@ -15,10 +15,8 @@ impl NopOp {
 }
 
 impl Operation for NopOp {
-    type Output = VoidTy;
-
     fn opcode() -> Opcode { Opcode::Nop }
-
+    fn out_type(&self) -> Option<IrTypeId> { None }
     fn num_operands(&self) -> u32 { 0 }
 
     fn write_to(&self, vec: &mut Vec<u8>) {}

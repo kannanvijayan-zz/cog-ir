@@ -2,7 +2,7 @@
 use std::fmt;
 
 use crate::ops::{ Operation, Opcode };
-use crate::ir_types::{ BoolTy, Int32Ty, Int64Ty };
+use crate::ir_types::{ IrTypeId, BoolTy, Int32Ty, Int64Ty };
 use crate::leb128;
 
 /** Introduces a constant boolean value. */
@@ -34,9 +34,10 @@ impl ConstInt64Op {
 
 
 impl Operation for ConstBoolOp {
-    type Output = BoolTy;
-
     fn opcode() -> Opcode { Opcode::ConstBool }
+    fn out_type(&self) -> Option<IrTypeId> {
+        Some(IrTypeId::Bool)
+    }
     fn num_operands(&self) -> u32 { 0 }
 
     fn write_to(&self, vec: &mut Vec<u8>) {
@@ -50,9 +51,10 @@ impl Operation for ConstBoolOp {
 }
 
 impl Operation for ConstInt32Op {
-    type Output = Int32Ty;
-
     fn opcode() -> Opcode { Opcode::ConstInt32 }
+    fn out_type(&self) -> Option<IrTypeId> {
+        Some(IrTypeId::Int32)
+    }
     fn num_operands(&self) -> u32 { 0 }
 
     fn write_to(&self, vec: &mut Vec<u8>) {
@@ -66,9 +68,10 @@ impl Operation for ConstInt32Op {
 }
 
 impl Operation for ConstInt64Op {
-    type Output = Int64Ty;
-
     fn opcode() -> Opcode { Opcode::ConstInt64 }
+    fn out_type(&self) -> Option<IrTypeId> {
+        Some(IrTypeId::Int64)
+    }
     fn num_operands(&self) -> u32 { 0 }
 
     fn write_to(&self, vec: &mut Vec<u8>) {

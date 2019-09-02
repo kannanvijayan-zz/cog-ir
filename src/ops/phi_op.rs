@@ -16,8 +16,6 @@ impl<T: IrType> PhiOp<T> {
 }
 
 impl<T: IrType> Operation for PhiOp<T> {
-    type Output = T;
-
     fn opcode() -> Opcode {
         match T::ID {
             IrTypeId::Bool => Opcode::PhiBool,
@@ -26,6 +24,7 @@ impl<T: IrType> Operation for PhiOp<T> {
             IrTypeId::PtrInt => Opcode::PhiPtrInt
         }
     }
+    fn out_type(&self) -> Option<IrTypeId> { Some(T::ID) }
 
     // A phi does not take direct operands.  The
     // inputs are taken from the list of phi inputs

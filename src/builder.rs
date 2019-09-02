@@ -347,9 +347,9 @@ impl<'bs> BuildSession<'bs> {
         })
     }
 
-    fn emit_instr<'cs: 'bs, OP: Operation>(&mut self,
+    fn emit_instr_impl<'cs: 'bs, OP>(&mut self,
         op: OP, operands: &[Defn<'cs>])
-      -> Option<TypedDefn<'bs, OP::Output>>
+      -> Option<InstrId>
       where OP: Operation
     {
         assert!(! self.get_cur_block().has_finished());
@@ -361,7 +361,27 @@ impl<'bs> BuildSession<'bs> {
 
         // No changes need to be made to the block store.
 
-        Some(TypedDefn::new(instr_id))
+        Some(instr_id)
+    }
+
+    fn emit_defn<'cs: 'bs, OP, T>(&mut self,
+        op: OP, operands: &[Defn<'cs>])
+      -> Option<TypedDefn<'bs, T>>
+      where OP: Operation,
+            T: IrType
+    {
+        debug_assert!(op.out_type() == Some(T::ID));
+        let ins = self.emit_instr_impl(op, operands) ?;
+        Some(TypedDefn::new(ins))
+    }
+
+    fn emit_nodef<'cs: 'bs, OP>(&mut self,
+        op: OP, operands: &[Defn<'cs>])
+      -> Option<InstrId>
+      where OP: Operation
+    {
+        debug_assert!(op.out_type() == None);
+        self.emit_instr_impl(op, operands)
     }
 
     fn emit_end<'cs: 'bs, OP>(&mut self,
@@ -388,22 +408,22 @@ impl<'bs> BuildSession<'bs> {
     }
 
     pub fn emit_nop(&mut self) {
-        self.emit_instr(NopOp::new(), &[]).unwrap();
+        self.emit_nodef(NopOp::new(), &[]).unwrap();
     }
     pub fn emit_const_bool(&mut self, b: bool)
       -> TypedDefn<'bs, BoolTy>
     {
-        self.emit_instr(ConstBoolOp::new(b), &[]).unwrap()
+        self.emit_defn(ConstBoolOp::new(b), &[]).unwrap()
     }
     pub fn emit_const_int32(&mut self, i: u32)
       -> TypedDefn<'bs, Int32Ty>
     {
-        self.emit_instr(ConstInt32Op::new(i), &[]).unwrap()
+        self.emit_defn(ConstInt32Op::new(i), &[]).unwrap()
     }
     pub fn emit_const_int64(&mut self, i: u64)
       -> TypedDefn<'bs, Int64Ty>
     {
-        self.emit_instr(ConstInt64Op::new(i), &[]).unwrap()
+        self.emit_defn(ConstInt64Op::new(i), &[]).unwrap()
     }
 
     pub fn emit_cmp<'cs: 'bs, T: IrType>(&mut self,
@@ -414,7 +434,7 @@ impl<'bs> BuildSession<'bs> {
     {
         let lhs = lhs.untyped_defn();
         let rhs = rhs.untyped_defn();
-        self.emit_instr(
+        self.emit_defn(
           CmpOp::<T>::new(kind), &[lhs, rhs]).unwrap()
     }
     pub fn emit_lt<'cs: 'bs, T: IrType>(&mut self,
@@ -468,8 +488,8 @@ impl<'bs> BuildSession<'bs> {
     {
         let lhs = lhs.untyped_defn();
         let rhs = rhs.untyped_defn();
-        self.emit_instr(
-          BiniOp::new(kind), &[lhs, rhs]).unwrap()
+        self.emit_defn(
+          BiniOp::<T>::new(kind), &[lhs, rhs]).unwrap()
     }
     pub fn emit_add<'cs: 'bs, T: IrType>(&mut self,
         lhs: TypedDefn<'cs, T>,
@@ -521,7 +541,7 @@ impl<'bs> BuildSession<'bs> {
         debug_assert!(self.emitted_phis
                         < self.get_cur_block().num_phis());
         self.emitted_phis += 1;
-        self.emit_instr(PhiOp::<T>::new(), &[]).unwrap()
+        self.emit_defn(PhiOp::<T>::new(), &[]).unwrap()
     }
 
     pub fn ret<'cs: 'bs, T: IrType>(&mut self,

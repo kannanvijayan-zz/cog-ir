@@ -2,7 +2,7 @@
 use std::fmt;
 
 use crate::ops::{ Opcode, Operation, TerminalOperation };
-use crate::ir_types::VoidTy;
+use crate::ir_types::IrTypeId;
 
 /**
  * The branch instruction branches on a boolean
@@ -19,9 +19,8 @@ impl TerminalOperation for BranchOp {
     fn num_targets(&self) -> u32 { 2 }
 }
 impl Operation for BranchOp {
-    type Output = VoidTy;
-
     fn opcode() -> Opcode { Opcode::Branch }
+    fn out_type(&self) -> Option<IrTypeId> { None }
 
     fn num_operands(&self) -> u32 { 1 }
 

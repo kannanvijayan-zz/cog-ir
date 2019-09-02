@@ -2,7 +2,7 @@
 use std::fmt;
 
 use crate::ops::{ Opcode, Operation, TerminalOperation };
-use crate::ir_types::VoidTy;
+use crate::ir_types::IrTypeId;
 
 /**
  * The branch instruction branches on a boolean
@@ -19,10 +19,8 @@ impl TerminalOperation for JumpOp {
     fn num_targets(&self) -> u32 { 1 }
 }
 impl Operation for JumpOp {
-    type Output = VoidTy;
-
     fn opcode() -> Opcode { Opcode::Jump }
-
+    fn out_type(&self) -> Option<IrTypeId> { None }
     fn num_operands(&self) -> u32 { 0 }
 
     fn write_to(&self, vec: &mut Vec<u8>) {}

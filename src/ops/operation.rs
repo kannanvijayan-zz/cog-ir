@@ -2,7 +2,7 @@
 use std::fmt;
 
 use crate::ops::Opcode;
-use crate::ir_types::IrOutputType;
+use crate::ir_types::IrTypeId;
 
 /**
  * An operation embodies the full notion of an
@@ -10,11 +10,11 @@ use crate::ir_types::IrOutputType;
  * of the specific associated input definitions.
  */
 pub trait Operation: Sized + Clone + fmt::Display {
-    /** The type of the output for the operation. */
-    type Output: IrOutputType;
-
     /** Get the opcode for this operation. */
     fn opcode() -> Opcode;
+
+    /** Get the output type of this operation. */
+    fn out_type(&self) -> Option<IrTypeId>;
 
     /** Get the number of expected operands. */
     fn num_operands(&self) -> u32;

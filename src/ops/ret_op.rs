@@ -17,8 +17,6 @@ impl<T: IrType> TerminalOperation for RetOp<T> {
     fn num_targets(&self) -> u32 { 0 }
 }
 impl<T: IrType> Operation for RetOp<T> {
-    type Output = VoidTy;
-
     fn opcode() -> Opcode {
         match T::ID {
             IrTypeId::Bool => Opcode::RetBool,
@@ -27,7 +25,7 @@ impl<T: IrType> Operation for RetOp<T> {
             IrTypeId::PtrInt => Opcode::RetPtrInt
         }
     }
-
+    fn out_type(&self) -> Option<IrTypeId> { Some(T::ID) }
     fn num_operands(&self) -> u32 { 1 }
 
     fn write_to(&self, vec: &mut Vec<u8>) {}

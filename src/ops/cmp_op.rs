@@ -38,8 +38,6 @@ impl<T: IrType> CmpOp<T> {
 }
 
 impl<T: IrType> Operation for CmpOp<T> {
-    type Output = BoolTy;
-
     fn opcode() -> Opcode {
         match T::ID {
             IrTypeId::Bool => Opcode::CmpBool,
@@ -48,7 +46,9 @@ impl<T: IrType> Operation for CmpOp<T> {
             IrTypeId::PtrInt => Opcode::CmpPtrInt
         }
     }
-
+    fn out_type(&self) -> Option<IrTypeId> {
+        Some(IrTypeId::Bool)
+    }
     fn num_operands(&self) -> u32 { 2 }
 
     fn write_to(&self, vec: &mut Vec<u8>) {

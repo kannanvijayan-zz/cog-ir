@@ -37,8 +37,6 @@ impl<T: IrType> BiniOp<T> {
 }
 
 impl<T: IrType> Operation for BiniOp<T> {
-    type Output = T;
-
     fn opcode() -> Opcode {
         match T::ID {
             IrTypeId::Bool => Opcode::BiniBool,
@@ -47,7 +45,7 @@ impl<T: IrType> Operation for BiniOp<T> {
             IrTypeId::PtrInt => Opcode::BiniPtrInt
         }
     }
-
+    fn out_type(&self) -> Option<IrTypeId> { Some(T::ID) }
     fn num_operands(&self) -> u32 { 2 }
 
     fn write_to(&self, vec: &mut Vec<u8>) {
