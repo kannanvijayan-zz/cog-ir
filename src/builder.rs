@@ -1,8 +1,7 @@
 
-use std::marker::PhantomData;
 use std::mem;
 
-use crate::block::{ Block, BlockId, BlockStore };
+use crate::block::{ Block, BlockId, BlockRef, BlockStore };
 use crate::ops::{ Operation, TerminalOperation };
 use crate::instr::{ InstrId, InstrStore };
 use crate::defn::{ Defn, TypedDefn };
@@ -142,7 +141,7 @@ impl<'bs> BuildSession<'bs> {
     // block from a `BlockRef` index.
     fn get_block(&self, block: BlockRef<'bs>) -> &Block {
         unsafe {
-            self.builder.block_store.get_block(block.0)
+            self.builder.block_store.get_block(block.id())
         }
     }
 
@@ -556,21 +555,4 @@ impl<'bs> BuildSession<'bs> {
             (if_false, false_phis)]).unwrap();
     }
             
-}
-
-/** A reference to a block. */
-#[derive(Clone, Copy, Debug)]
-#[derive(PartialEq, Eq)]
-pub struct BlockRef<'a>(BlockId, PhantomData<&'a ()>);
-
-impl<'a> BlockRef<'a> {
-    fn new(id: BlockId) -> BlockRef<'a> {
-        BlockRef(id, Default::default())
-    }
-
-    fn id(&self) -> BlockId { self.0 }
-}
-
-impl<'a> Into<BlockId> for BlockRef<'a> {
-    fn into(self) -> BlockId { self.0 }
 }

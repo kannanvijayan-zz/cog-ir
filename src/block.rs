@@ -1,4 +1,6 @@
 
+use std::marker::PhantomData;
+
 use crate::instr::{ InstrId, InstrPosn };
 
 /**
@@ -17,6 +19,23 @@ pub struct BlockId(u32);
 
 impl BlockId {
     pub(crate) fn as_u32(&self) -> u32 { self.0 }
+}
+
+/** A reference to a block. */
+#[derive(Clone, Copy, Debug)]
+#[derive(PartialEq, Eq)]
+pub struct BlockRef<'a>(BlockId, PhantomData<&'a ()>);
+
+impl<'a> BlockRef<'a> {
+    pub(crate) fn new(id: BlockId) -> BlockRef<'a> {
+        BlockRef(id, Default::default())
+    }
+
+    pub(crate) fn id(&self) -> BlockId { self.0 }
+}
+
+impl<'a> Into<BlockId> for BlockRef<'a> {
+    fn into(self) -> BlockId { self.0 }
 }
 
 /**
