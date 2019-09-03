@@ -4,21 +4,22 @@ use std::mem;
 use std::marker::PhantomData;
 
 use crate::ops::{ Operation, Opcode };
-use crate::ir_types::{ IrType, IrTypeId, BoolTy };
+use crate::ir_types::IrTypeId;
 
 #[derive(Clone, Copy)]
 #[repr(u8)]
 pub enum CmpKind { Lt = 1, Gt, Le, Ge, Eq, Ne }
 impl CmpKind {
-    pub fn is_valid_code(code: u8) -> bool {
+    fn is_valid_code(code: u8) -> bool {
         (code >= (CmpKind::Lt as u8))
           && (code <= (CmpKind::Ne as u8))
     }
-    pub unsafe fn from_u8(code: u8) -> CmpKind {
+    unsafe fn from_u8(code: u8) -> CmpKind {
         debug_assert!(Self::is_valid_code(code));
         mem::transmute(code)
     }
-    pub fn as_str(&self) -> &'static str {
+    fn into_u8(self) -> u8 { self as u8 }
+    fn as_str(&self) -> &'static str {
         match *self {
           CmpKind::Lt => "Lt", CmpKind::Gt => "Gt",
           CmpKind::Le => "Le", CmpKind::Ge => "Ge",
@@ -29,44 +30,47 @@ impl CmpKind {
 
 /** Introduces a comparison instruction. */
 #[derive(Clone)]
-pub struct CmpOp<T: IrType>(CmpKind, PhantomData<T>);
+pub struct CmpOp {
+    kind: CmpKind,
+    tyid: IrTypeId
+}
 
-impl<T: IrType> CmpOp<T> {
-    pub(crate) fn new(op: CmpKind) -> CmpOp<T> {
-        CmpOp(op, Default::default())
+impl CmpOp {
+    pub(crate) fn new(kind: CmpKind, tyid: IrTypeId)
+      -> CmpOp
+    {
+        CmpOp { kind, tyid }
     }
 }
 
-impl<T: IrType> Operation for CmpOp<T> {
-    fn opcode() -> Opcode {
-        match T::ID {
-            IrTypeId::Bool => Opcode::CmpBool,
-            IrTypeId::Int32 => Opcode::CmpInt32,
-            IrTypeId::Int64 => Opcode::CmpInt64,
-            IrTypeId::PtrInt => Opcode::CmpPtrInt
-        }
-    }
+impl Operation for CmpOp {
+    fn opcode() -> Opcode { Opcode::Cmp }
     fn out_type(&self) -> Option<IrTypeId> {
         Some(IrTypeId::Bool)
     }
     fn num_operands(&self) -> u32 { 2 }
 
     fn write_to(&self, vec: &mut Vec<u8>) {
-        vec.push(self.0 as u8);
+        vec.extend_from_slice(&[
+            self.kind.into_u8(),
+            self.tyid.into_u8()
+        ]);
     }
     unsafe fn read_from(bytes: &[u8]) -> (usize, Self) {
-        debug_assert!(bytes.len() >= 1);
-        let b = *bytes.get_unchecked(0);
-        assert!(CmpKind::is_valid_code(b));
-        (1, CmpOp::new(CmpKind::from_u8(b)))
+        debug_assert!(bytes.len() >= 2);
+        let kind =
+          CmpKind::from_u8(*bytes.get_unchecked(0));
+        let tyid =
+          IrTypeId::from_u8(*bytes.get_unchecked(1));
+        (2, CmpOp::new(kind, tyid))
     }
 }
 
-impl<T: IrType> fmt::Display for CmpOp<T> {
+impl fmt::Display for CmpOp {
     fn fmt(&self, f: &mut fmt::Formatter)
       -> Result<(), fmt::Error>
     {
-        write!(f, "Cmp{}_{}",
-          self.0.as_str(), T::ID.as_str())
+        write!(f, "Cmp{}<{}>",
+          self.kind.as_str(), self.tyid.as_str())
     }
 }

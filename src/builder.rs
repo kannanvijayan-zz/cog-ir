@@ -435,7 +435,7 @@ impl<'bs> BuildSession<'bs> {
         let lhs = lhs.untyped_defn();
         let rhs = rhs.untyped_defn();
         self.emit_defn(
-          CmpOp::<T>::new(kind), &[lhs, rhs]).unwrap()
+          CmpOp::new(kind, T::ID), &[lhs, rhs]).unwrap()
     }
     pub fn emit_lt<'cs: 'bs, T: IrType>(&mut self,
         lhs: TypedDefn<'cs, T>,
@@ -489,7 +489,7 @@ impl<'bs> BuildSession<'bs> {
         let lhs = lhs.untyped_defn();
         let rhs = rhs.untyped_defn();
         self.emit_defn(
-          BiniOp::<T>::new(kind), &[lhs, rhs]).unwrap()
+          BiniOp::new(kind, T::ID), &[lhs, rhs]).unwrap()
     }
     pub fn emit_add<'cs: 'bs, T: IrType>(&mut self,
         lhs: TypedDefn<'cs, T>,
@@ -541,14 +541,14 @@ impl<'bs> BuildSession<'bs> {
         debug_assert!(self.emitted_phis
                         < self.get_cur_block().num_phis());
         self.emitted_phis += 1;
-        self.emit_defn(PhiOp::<T>::new(), &[]).unwrap()
+        self.emit_defn(PhiOp::new(T::ID), &[]).unwrap()
     }
 
     pub fn ret<'cs: 'bs, T: IrType>(&mut self,
         val: TypedDefn<'cs, T>)
     {
         self.emit_end(
-          RetOp::<T>::new(), &[val.untyped_defn()],
+          RetOp::new(T::ID), &[val.untyped_defn()],
           /* targets = */ &[]).unwrap();
     }
 

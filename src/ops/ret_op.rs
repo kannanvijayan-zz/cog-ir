@@ -6,39 +6,39 @@ use crate::ops::{ Opcode, Operation, TerminalOperation };
 use crate::ir_types::{ IrType, IrTypeId, VoidTy };
 
 #[derive(Clone)]
-pub struct RetOp<T: IrType>(PhantomData<T>);
+pub struct RetOp { tyid: IrTypeId }
 
-impl<T: IrType> RetOp<T> {
-    pub(crate) fn new() -> RetOp<T> {
-        RetOp(Default::default())
+impl RetOp {
+    pub(crate) fn new(tyid: IrTypeId) -> RetOp {
+        RetOp { tyid }
     }
 }
-impl<T: IrType> TerminalOperation for RetOp<T> {
+impl TerminalOperation for RetOp {
     fn num_targets(&self) -> u32 { 0 }
 }
-impl<T: IrType> Operation for RetOp<T> {
-    fn opcode() -> Opcode {
-        match T::ID {
-            IrTypeId::Bool => Opcode::RetBool,
-            IrTypeId::Int32 => Opcode::RetInt32,
-            IrTypeId::Int64 => Opcode::RetInt64,
-            IrTypeId::PtrInt => Opcode::RetPtrInt
-        }
+impl Operation for RetOp {
+    fn opcode() -> Opcode { Opcode::Ret }
+    fn out_type(&self) -> Option<IrTypeId> {
+      Some(self.tyid)
     }
-    fn out_type(&self) -> Option<IrTypeId> { Some(T::ID) }
     fn num_operands(&self) -> u32 { 1 }
 
-    fn write_to(&self, vec: &mut Vec<u8>) {}
+    fn write_to(&self, vec: &mut Vec<u8>) {
+        vec.push(self.tyid.into_u8());
+    }
 
-    unsafe fn read_from(_bytes: &[u8]) -> (usize, Self) {
-        (0, RetOp::new())
+    unsafe fn read_from(bytes: &[u8]) -> (usize, Self) {
+        debug_assert!(bytes.len() >= 1);
+        let tyid =
+          IrTypeId::from_u8(*bytes.get_unchecked(0));
+        (1, RetOp::new(tyid))
     }
 }
 
-impl<T: IrType> fmt::Display for RetOp<T> {
+impl fmt::Display for RetOp {
     fn fmt(&self, f: &mut fmt::Formatter)
       -> Result<(), fmt::Error>
     {
-        write!(f, "Ret{}", T::ID.as_str())
+        write!(f, "Ret<{}>", self.tyid.as_str())
     }
 }

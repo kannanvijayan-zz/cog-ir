@@ -21,7 +21,6 @@ impl TerminalOperation for BranchOp {
 impl Operation for BranchOp {
     fn opcode() -> Opcode { Opcode::Branch }
     fn out_type(&self) -> Option<IrTypeId> { None }
-
     fn num_operands(&self) -> u32 { 1 }
 
     fn write_to(&self, vec: &mut Vec<u8>) {}

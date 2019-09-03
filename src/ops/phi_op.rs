@@ -7,42 +7,37 @@ use crate::ir_types::{ IrType, IrTypeId };
 
 /** Introduces a phi value. */
 #[derive(Clone)]
-pub struct PhiOp<T: IrType>(PhantomData<T>);
+pub struct PhiOp { tyid: IrTypeId }
 
-impl<T: IrType> PhiOp<T> {
-    pub(crate) fn new() -> PhiOp<T> {
-        PhiOp(Default::default())
+impl PhiOp {
+    pub(crate) fn new(tyid: IrTypeId) -> PhiOp {
+        PhiOp { tyid }
     }
 }
 
-impl<T: IrType> Operation for PhiOp<T> {
-    fn opcode() -> Opcode {
-        match T::ID {
-            IrTypeId::Bool => Opcode::PhiBool,
-            IrTypeId::Int32 => Opcode::PhiInt32,
-            IrTypeId::Int64 => Opcode::PhiInt64,
-            IrTypeId::PtrInt => Opcode::PhiPtrInt
-        }
+impl Operation for PhiOp {
+    fn opcode() -> Opcode { Opcode::Phi }
+    fn out_type(&self) -> Option<IrTypeId> {
+        Some(self.tyid)
     }
-    fn out_type(&self) -> Option<IrTypeId> { Some(T::ID) }
-
-    // A phi does not take direct operands.  The
-    // inputs are taken from the list of phi inputs
-    // given to the end instruction of each directd
-    // predecessor block.
     fn num_operands(&self) -> u32 { 0 }
 
-    fn write_to(&self, vec: &mut Vec<u8>) {}
+    fn write_to(&self, vec: &mut Vec<u8>) {
+        vec.push(self.tyid.into_u8());
+    }
 
-    unsafe fn read_from(_bytes: &[u8]) -> (usize, Self) {
-        (0, PhiOp::new())
+    unsafe fn read_from(bytes: &[u8]) -> (usize, Self) {
+        debug_assert!(bytes.len() >= 1);
+        let tyid =
+          IrTypeId::from_u8(*bytes.get_unchecked(0));
+        (1, PhiOp::new(tyid))
     }
 }
 
-impl<T: IrType> fmt::Display for PhiOp<T> {
+impl fmt::Display for PhiOp {
     fn fmt(&self, f: &mut fmt::Formatter)
       -> Result<(), fmt::Error>
     {
-        write!(f, "Phi{}", T::ID.as_str())
+        write!(f, "Phi<{}>", self.tyid.as_str())
     }
 }

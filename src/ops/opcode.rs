@@ -14,30 +14,20 @@ use crate::ir_types::{ BoolTy, Int32Ty, Int64Ty, PtrIntTy };
 #[repr(u8)]
 pub enum Opcode {
     // Special instructions.
-    Nop = 1,
-    PhiBool, PhiInt32, PhiInt64, PhiPtrInt,
+    Nop = 1, Phi,
 
     // Constant instructions.
     ConstBool, ConstInt32, ConstInt64,
 
-    // Comparison operators.
-    CmpBool, CmpInt32, CmpInt64, CmpPtrInt,
+    // Comparisons (Lt, Gt, Le, Ge, Eq and Ne)
+    Cmp,
 
     // Binary integer instructions.
-    BiniBool, BiniInt32, BiniInt64, BiniPtrInt,
+    // (Add, Sub, Mul, And, Or, Xor)
+    Bini,
 
     // Terminal instructions.
-    RetBool, RetInt32, RetInt64, RetPtrInt,
-    Branch, Jump,
-}
-
-/**
- * Dispatch handler that gets called to handle
- * some opcode that has been narrowed to a static
- * instruction type.
- */
-pub trait SpecializeOpcode<R> {
-    fn handle<OP: Operation>(self) -> R;
+    Ret, Branch, Jump,
 }
 
 impl Opcode {
@@ -55,78 +45,5 @@ impl Opcode {
     }
 
     pub fn into_u8(self) -> u8 { self as u8 }
-
-    pub fn specialize<R, H>(self, h: H) -> R
-      where H: SpecializeOpcode<R>
-    {
-        match self {
-          Opcode::Nop => {
-            h.handle::<ops::NopOp>()
-          },
-          Opcode::PhiBool => {
-            h.handle::<ops::PhiOp<BoolTy>>()
-          },
-          Opcode::PhiInt32 => {
-            h.handle::<ops::PhiOp<Int32Ty>>()
-          },
-          Opcode::PhiInt64 => {
-            h.handle::<ops::PhiOp<Int64Ty>>()
-          },
-          Opcode::PhiPtrInt => {
-            h.handle::<ops::PhiOp<PtrIntTy>>()
-          },
-          Opcode::ConstBool => {
-            h.handle::<ops::ConstBoolOp>()
-          },
-          Opcode::ConstInt32 => {
-            h.handle::<ops::ConstInt32Op>()
-          },
-          Opcode::ConstInt64 => {
-            h.handle::<ops::ConstInt64Op>()
-          },
-          Opcode::BiniBool => {
-            h.handle::<ops::BiniOp<BoolTy>>()
-          },
-          Opcode::BiniInt32 => {
-            h.handle::<ops::BiniOp<Int32Ty>>()
-          },
-          Opcode::BiniInt64 => {
-            h.handle::<ops::BiniOp<Int64Ty>>()
-          },
-          Opcode::BiniPtrInt => {
-            h.handle::<ops::BiniOp<PtrIntTy>>()
-          },
-          Opcode::CmpBool => {
-            h.handle::<ops::CmpOp<BoolTy>>()
-          },
-          Opcode::CmpInt32 => {
-            h.handle::<ops::CmpOp<Int32Ty>>()
-          },
-          Opcode::CmpInt64 => {
-            h.handle::<ops::CmpOp<Int64Ty>>()
-          },
-          Opcode::CmpPtrInt => {
-            h.handle::<ops::CmpOp<PtrIntTy>>()
-          },
-          Opcode::RetBool => {
-            h.handle::<ops::RetOp<BoolTy>>()
-          },
-          Opcode::RetInt32 => {
-            h.handle::<ops::RetOp<Int32Ty>>()
-          },
-          Opcode::RetInt64 => {
-            h.handle::<ops::RetOp<Int64Ty>>()
-          },
-          Opcode::RetPtrInt => {
-            h.handle::<ops::RetOp<PtrIntTy>>()
-          },
-          Opcode::Branch => {
-            h.handle::<ops::BranchOp>()
-          },
-          Opcode::Jump => {
-            h.handle::<ops::JumpOp>()
-          },
-        }
-    }
 }
 

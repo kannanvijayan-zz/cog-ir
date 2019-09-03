@@ -1,4 +1,5 @@
 
+use std::mem;
 use std::fmt::Debug;
 
 /**
@@ -14,7 +15,7 @@ pub enum IrTypeId {
     PtrInt
 }
 impl IrTypeId {
-    pub fn as_str(&self) -> &'static str {
+    pub(crate) fn as_str(&self) -> &'static str {
         match *self {
             IrTypeId::Bool => "Bool",
             IrTypeId::Int32 => "Int32",
@@ -22,6 +23,15 @@ impl IrTypeId {
             IrTypeId::PtrInt => "PtrInt"
         }
     }
+    pub(crate) fn valid_u8(v: u8) -> bool {
+        (v >= (IrTypeId::Bool as u8))
+          && (v <= (IrTypeId::PtrInt as u8))
+    }
+    pub(crate) unsafe fn from_u8(v: u8) -> IrTypeId {
+        debug_assert!(Self::valid_u8(v));
+        mem::transmute(v)
+    }
+    pub(crate) fn into_u8(self) -> u8 { self as u8 }
 }
 
 /**

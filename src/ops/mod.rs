@@ -1,6 +1,6 @@
 
 mod opcode;
-pub use self::opcode::{ Opcode, SpecializeOpcode };
+pub use self::opcode::Opcode;
 
 mod operation;
 pub use self::operation::{ Operation, TerminalOperation };
