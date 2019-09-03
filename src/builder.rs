@@ -8,11 +8,9 @@ use crate::defn::{ Defn, TypedDefn };
 
 use crate::ops::{
     NopOp, PhiOp,
-    ConstBoolOp, ConstInt32Op, ConstInt64Op,
-
+    ConstOp,
     CmpOp, CmpKind,
     BiniOp, BiniKind,
-
     RetOp, JumpOp, BranchOp
 };
 use crate::ir_types::{
@@ -413,17 +411,17 @@ impl<'bs> BuildSession<'bs> {
     pub fn emit_const_bool(&mut self, b: bool)
       -> TypedDefn<'bs, BoolTy>
     {
-        self.emit_defn(ConstBoolOp::new(b), &[]).unwrap()
+        self.emit_defn(ConstOp::new_bool(b), &[]).unwrap()
     }
     pub fn emit_const_int32(&mut self, i: u32)
       -> TypedDefn<'bs, Int32Ty>
     {
-        self.emit_defn(ConstInt32Op::new(i), &[]).unwrap()
+        self.emit_defn(ConstOp::new_int32(i), &[]).unwrap()
     }
     pub fn emit_const_int64(&mut self, i: u64)
       -> TypedDefn<'bs, Int64Ty>
     {
-        self.emit_defn(ConstInt64Op::new(i), &[]).unwrap()
+        self.emit_defn(ConstOp::new_int64(i), &[]).unwrap()
     }
 
     pub fn emit_cmp<'cs: 'bs, T: IrType>(&mut self,

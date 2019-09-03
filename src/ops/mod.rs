@@ -15,9 +15,7 @@ mod cmp_op;
 pub use self::cmp_op::{ CmpOp, CmpKind };
 
 mod const_op;
-pub use self::const_op::{
-    ConstBoolOp, ConstInt32Op, ConstInt64Op
-};
+pub use self::const_op::ConstOp;
 
 mod jump_op;
 pub use self::jump_op::JumpOp;

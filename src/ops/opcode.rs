@@ -16,8 +16,8 @@ pub enum Opcode {
     // Special instructions.
     Nop = 1, Phi,
 
-    // Constant instructions.
-    ConstBool, ConstInt32, ConstInt64,
+    // Introduce const values of various types.
+    Const,
 
     // Comparisons (Lt, Gt, Le, Ge, Eq and Ne)
     Cmp,
