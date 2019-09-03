@@ -1,7 +1,7 @@
 
 use std::fmt;
 
-use crate::ops::{ Operation, Opcode };
+use crate::ops::{ Operation, Opcode, Op };
 use crate::ir_types::{ IrTypeId, BoolTy, Int32Ty, Int64Ty };
 use crate::leb128;
 
@@ -35,6 +35,7 @@ impl ConstOp {
 
 impl Operation for ConstOp {
     fn opcode() -> Opcode { Opcode::Const }
+    fn op(&self) -> Op { Op::Const(self.clone()) }
     fn out_type(&self) -> Option<IrTypeId> {
         Some(self.tyid())
     }

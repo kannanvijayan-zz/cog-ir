@@ -2,7 +2,9 @@
 use std::fmt;
 use std::marker::PhantomData;
 
-use crate::ops::{ Opcode, Operation, TerminalOperation };
+use crate::ops::{
+    Opcode, Operation, TerminalOperation, Op
+};
 use crate::ir_types::{ IrType, IrTypeId, VoidTy };
 
 #[derive(Clone)]
@@ -18,6 +20,7 @@ impl TerminalOperation for RetOp {
 }
 impl Operation for RetOp {
     fn opcode() -> Opcode { Opcode::Ret }
+    fn op(&self) -> Op { Op::Ret(self.clone()) }
     fn out_type(&self) -> Option<IrTypeId> {
       Some(self.tyid)
     }

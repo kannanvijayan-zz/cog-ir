@@ -3,7 +3,7 @@ use std::fmt;
 use std::mem;
 use std::marker::PhantomData;
 
-use crate::ops::{ Operation, Opcode };
+use crate::ops::{ Operation, Opcode, Op };
 use crate::ir_types::IrTypeId;
 
 #[derive(Clone, Copy)]
@@ -45,6 +45,7 @@ impl CmpOp {
 
 impl Operation for CmpOp {
     fn opcode() -> Opcode { Opcode::Cmp }
+    fn op(&self) -> Op { Op::Cmp(self.clone()) }
     fn out_type(&self) -> Option<IrTypeId> {
         Some(IrTypeId::Bool)
     }

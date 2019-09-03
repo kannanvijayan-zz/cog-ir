@@ -1,7 +1,7 @@
 
 use std::fmt;
 
-use crate::ops::{ Opcode, Operation };
+use crate::ops::{ Opcode, Operation, Op };
 use crate::ir_types::IrTypeId;
 
 /**
@@ -16,6 +16,7 @@ impl NopOp {
 
 impl Operation for NopOp {
     fn opcode() -> Opcode { Opcode::Nop }
+    fn op(&self) -> Op { Op::Nop(self.clone()) }
     fn out_type(&self) -> Option<IrTypeId> { None }
     fn num_operands(&self) -> u32 { 0 }
 

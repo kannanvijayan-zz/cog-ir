@@ -1,7 +1,9 @@
 
 use std::fmt;
 
-use crate::ops::{ Opcode, Operation, TerminalOperation };
+use crate::ops::{
+    Opcode, Operation, TerminalOperation, Op
+};
 use crate::ir_types::IrTypeId;
 
 /**
@@ -20,6 +22,7 @@ impl TerminalOperation for BranchOp {
 }
 impl Operation for BranchOp {
     fn opcode() -> Opcode { Opcode::Branch }
+    fn op(&self) -> Op { Op::Branch(self.clone()) }
     fn out_type(&self) -> Option<IrTypeId> { None }
     fn num_operands(&self) -> u32 { 1 }
 

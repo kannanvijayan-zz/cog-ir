@@ -1,9 +1,12 @@
 
 mod opcode;
-pub use self::opcode::Opcode;
+pub use self::opcode::{ Opcode, SpecializeOpcode };
 
 mod operation;
 pub use self::operation::{ Operation, TerminalOperation };
+
+mod op;
+pub use self::op::Op;
 
 mod bini_op;
 pub use self::bini_op::{ BiniOp, BiniKind };

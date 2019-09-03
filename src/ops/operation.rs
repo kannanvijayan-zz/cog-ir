@@ -2,6 +2,7 @@
 use std::fmt;
 
 use crate::ops::Opcode;
+use crate::ops::Op;
 use crate::ir_types::IrTypeId;
 
 /**
@@ -12,6 +13,9 @@ use crate::ir_types::IrTypeId;
 pub trait Operation: Sized + Clone + fmt::Display {
     /** Get the opcode for this operation. */
     fn opcode() -> Opcode;
+
+    /** Get the op for this operation. */
+    fn op(&self) -> Op;
 
     /** Get the output type of this operation. */
     fn out_type(&self) -> Option<IrTypeId>;

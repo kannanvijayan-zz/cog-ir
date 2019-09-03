@@ -2,7 +2,7 @@
 use std::fmt;
 use std::mem;
 
-use crate::ops::{ Operation, Opcode };
+use crate::ops::{ Operation, Opcode, Op };
 use crate::ir_types::IrTypeId;
 
 /**
@@ -52,6 +52,7 @@ impl BiniOp {
 
 impl Operation for BiniOp {
     fn opcode() -> Opcode { Opcode::Bini }
+    fn op(&self) -> Op { Op::Bini(self.clone()) }
     fn out_type(&self) -> Option<IrTypeId> {
         Some(self.tyid)
     }

@@ -2,7 +2,7 @@
 use std::fmt;
 use std::marker::PhantomData;
 
-use crate::ops::{ Opcode, Operation };
+use crate::ops::{ Opcode, Operation, Op };
 use crate::ir_types::{ IrType, IrTypeId };
 
 /** Introduces a phi value. */
@@ -17,6 +17,7 @@ impl PhiOp {
 
 impl Operation for PhiOp {
     fn opcode() -> Opcode { Opcode::Phi }
+    fn op(&self) -> Op { Op::Phi(self.clone()) }
     fn out_type(&self) -> Option<IrTypeId> {
         Some(self.tyid)
     }
