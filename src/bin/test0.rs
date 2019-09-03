@@ -5,7 +5,7 @@ extern crate cog_ir;
 extern crate log;
 extern crate env_logger;
 
-use cog_ir::api::{ build, Int32Ty };
+use cog_ir::api::{ build, graph, Int32Ty };
 
 fn main() {
     env_logger::builder()
@@ -102,4 +102,16 @@ fn main() {
     });
 
     builder.dump_stats("test1(simple subgraph)");
+
+    graph(builder, |gs| {
+        gs.debug_print_cur_instr();
+        let mut i = 0_u32;
+        loop {
+            let defn = match gs.next_defn() {
+              Some(defn) => defn, None => { break; }
+            };
+            debug!("i0: {}", defn);
+            gs.debug_print_cur_instr();
+        }
+    });
 }

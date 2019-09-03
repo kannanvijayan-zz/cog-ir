@@ -5,6 +5,7 @@ use std::fmt::Write;
 
 use crate::ops::{ Operation, Op };
 use crate::block::BlockId;
+use crate::defn::Defn;
 
 use crate::leb128;
 
@@ -22,6 +23,42 @@ pub(crate) struct InstrStore {
     num_instrs: u32,
 }
 
+/**
+ * Stores information about a decoded instruction.
+ */
+pub(crate) struct InstrInfo<'a> {
+    /** The instruction data. */
+    instr_data: &'a [u8],
+
+    /** The id of the instruction. */
+    defn: Defn<'a>,
+
+    /** The operation. */
+    op: Op,
+
+    /** The offset to the input operands list. */
+    inputs_offset: u32,
+
+    /** The offset to after the operands list.
+     * Also the offset to the targets list for
+     * end instructions. */
+    after_inputs_offset: u32,
+}
+
+/**
+ * An InstrInputs iterates through the input
+ * definitions for an instruction.
+ */
+pub struct InstrInputs<'a> {
+    // Remaining # of inputs to read.
+    remaining: u32,
+
+    // Number of bytes read so far.
+    bytes_read: u32,
+
+    // The current bytes cursor.
+    bytes: &'a [u8]
+}
 /**
  * The offset of an instruction in the instruction stream.
  * Serves as the canonical id for an instruction.
@@ -156,6 +193,36 @@ impl InstrStore {
         }
     }
 
+    unsafe fn instr_data(&self, id: InstrId) -> &[u8] {
+        let offset = id.posn().as_u32();
+        debug_assert!((offset as usize )
+                        <= self.instr_bytes.len());
+        &self.instr_bytes[offset as usize ..]
+    }
+    pub(crate) unsafe fn read_instr_info<'a>(
+        &'a self, instr_id: InstrId)
+      -> InstrInfo<'a>
+    {
+        let instr_data = self.instr_data(instr_id);
+        let defn = Defn::new(instr_id);
+        let (nb, op) = Op::read_from(instr_data);
+        let inputs_offset = nb as u32;
+        let after_inputs_offset = 0;
+        let mut instr_info = InstrInfo {
+            instr_data, defn, op,
+            inputs_offset, after_inputs_offset,
+        };
+
+        // Adjust after_inputs_offset to be correct.
+        let mut inputs_iter = instr_info.inputs_iter();
+        loop {
+            if inputs_iter.next() == None { break; }
+        }
+        instr_info.after_inputs_offset =
+            inputs_offset + inputs_iter.bytes_read();
+        instr_info
+    }
+
     pub(crate) fn emit_instr<OP, DEF>(
         &mut self, op: &OP, inputs: &[DEF])
       -> Option<InstrId>
@@ -212,6 +279,77 @@ impl InstrStore {
     }
 }
 
+impl<'a> InstrInfo<'a> {
+    pub(crate) fn defn(&self) -> Defn<'a> { self.defn }
+
+    fn inputs_data(&self) -> &'a [u8] {
+        let offset = self.inputs_offset as usize;
+        debug_assert!(self.instr_data.len() >= offset);
+        unsafe { self.instr_data.get_unchecked(offset..) }
+    }
+
+    pub(crate) fn op(&self) -> &Op { &self.op }
+    pub(crate) fn inputs_iter(&self) -> InstrInputs<'a> {
+        unsafe {
+            InstrInputs::new(
+              self.op.num_inputs(), self.inputs_data())
+        }
+    }
+
+    pub(crate) fn next_defn(&self) -> Option<Defn<'a>> {
+        if self.op().terminal() {
+            return None;
+        }
+        // Use the after_inputs_offset.
+        let instr_offset = self.defn.instr_id().as_u32();
+        let next_instr_offset =
+          instr_offset + self.after_inputs_offset;
+        debug_assert!((self.after_inputs_offset as usize)
+                        < self.instr_data.len());
+
+        let posn = InstrPosn::new(next_instr_offset);
+        Some(Defn::new(InstrId::new(posn)))
+    }
+}
+impl<'a> fmt::Display for InstrInfo<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter)
+      -> Result<(), fmt::Error>
+    {
+        write!(f, "InstrInfo[{} - {}]",
+          self.defn(), self.op())
+    }
+}
+
+impl<'a> InstrInputs<'a> {
+    // Unsafe constructing this because the safe
+    // iterator implementation uses unsafe code.
+    unsafe fn new(remaining: u32, bytes: &'a [u8])
+      -> InstrInputs<'a>
+    {
+        InstrInputs { remaining, bytes, bytes_read: 0 }
+    }
+
+    fn bytes_read(&self) -> u32 { self.bytes_read }
+}
+impl<'a> Iterator for InstrInputs<'a> {
+    type Item = Defn<'a>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.remaining == 0 {
+            return None;
+        }
+        let (nb, id64) = unsafe {
+            leb128::read_leb128u(self.bytes)
+        };
+        self.bytes_read += nb as u32;
+        self.remaining -= 1;
+        self.bytes = unsafe {
+          self.bytes.get_unchecked(nb ..)
+        };
+        let posn = InstrPosn::new(id64 as u32);
+        Some(Defn::new(InstrId::new(posn)))
+    }
+}
+
 impl InstrPosn {
     const INVALID_VALUE: u32 = u32::max_value();
 
@@ -234,6 +372,7 @@ impl InstrId {
     pub(crate) fn new(posn: InstrPosn) -> InstrId {
         InstrId(posn)
     }
+    fn posn(&self) -> InstrPosn { self.0 }
     pub(crate) fn as_u32(&self) -> u32 { self.0.as_u32() }
 
     pub(crate) fn invalid() -> InstrId {

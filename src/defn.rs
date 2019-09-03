@@ -2,11 +2,13 @@
 use std::fmt;
 use std::marker::PhantomData;
 
-use crate::instr::InstrId;
+use crate::instr::{ InstrId, InstrPosn };
 use crate::ir_types::{ IrType, IrOutputType };
+use crate::leb128;
 
 /** A definition (just a reference to an instruction). */
 #[derive(Clone, Copy, Debug)]
+#[derive(PartialEq, Eq)]
 pub struct Defn<'a>(InstrId, PhantomData<&'a ()>);
 
 impl<'a> Defn<'a> {
@@ -62,4 +64,3 @@ impl<'a, T> TypedDefn<'a, T>
         TypedDefn(self.0, Default::default())
     }
 }
-

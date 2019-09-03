@@ -5,6 +5,7 @@ use crate::block::{ Block, BlockId, BlockRef, BlockStore };
 use crate::ops::Operation;
 use crate::instr::{ InstrId, InstrStore };
 use crate::defn::{ Defn, TypedDefn };
+use crate::graph::Graph;
 
 use crate::ops::{
     NopOp, PhiOp,
@@ -49,6 +50,10 @@ impl Builder {
           Vec::with_capacity(Self::SUBGRAPH_DECLS_CAP);
 
         Builder { instr_store, block_store, subgraph_decls }
+    }
+
+    pub(crate) fn into_graph(self) -> Graph {
+        Graph::new(self.instr_store, self.block_store)
     }
 
     pub(crate) fn build<F>(f: F) -> Builder
@@ -574,5 +579,4 @@ impl<'bs> BuildSession<'bs> {
             (if_true, true_phis),
             (if_false, false_phis)]).unwrap();
     }
-            
 }

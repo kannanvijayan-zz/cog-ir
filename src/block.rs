@@ -1,4 +1,5 @@
 
+use std::fmt;
 use std::marker::PhantomData;
 
 use crate::instr::{ InstrId, InstrPosn };
@@ -16,9 +17,15 @@ use crate::instr::{ InstrId, InstrPosn };
 #[derive(Clone, Copy, Debug)]
 #[derive(PartialEq, Eq)]
 pub struct BlockId(u32);
-
 impl BlockId {
     pub(crate) fn as_u32(&self) -> u32 { self.0 }
+}
+impl fmt::Display for BlockId {
+    fn fmt(&self, f: &mut fmt::Formatter)
+      -> Result<(), fmt::Error>
+    {
+        write!(f, "BlockId({})", self.0)
+    }
 }
 
 /** A reference to a block. */
@@ -115,6 +122,13 @@ impl Block {
         }
     }
 
+    pub(crate) fn first_instr(&self) -> InstrId {
+        self.first_instr
+    }
+    pub(crate) fn last_instr(&self) -> InstrId {
+        self.last_instr
+    }
+
     pub fn is_start(&self) -> bool {
         match self.variant {
             BlockVariant::Start{ start_no: _ }
@@ -209,9 +223,9 @@ impl BlockStore {
 
         // Declare a start block and enter it
         // immediately.
-        let start_id = bs.decl_start_block();
-        let start_ins = InstrId::new(InstrPosn::new(0));
-        unsafe { bs.enter_block(start_id, start_ins) };
+        let first_id = bs.decl_start_block();
+        let first_ins = InstrId::new(InstrPosn::new(0));
+        unsafe { bs.enter_block(first_id, first_ins) };
 
         bs
     }
@@ -219,6 +233,52 @@ impl BlockStore {
     pub(crate) fn start_block_id(&self) -> BlockId {
         debug_assert!(self.decl_blocks.len() > 0);
         BlockId(0)
+    }
+    pub(crate) unsafe fn last_rpo_block(&self)
+      -> BlockId
+    {
+        debug_assert!(self.rpo_index.len()
+                        == self.decl_blocks.len());
+        debug_assert!(self.rpo_index.len() > 0);
+        let last_block_id =
+            *self.rpo_index.get_unchecked(
+              self.rpo_index.len() - 1);
+        debug_assert!(
+          self.get_block(last_block_id).has_finished());
+        last_block_id
+    }
+    pub(crate) unsafe fn next_rpo_block(
+        &self, block_id: BlockId)
+      -> Option<BlockId>
+    {
+        let block = self.get_block(block_id);
+        debug_assert!(block.has_finished());
+        let ord = block.order as usize;
+        debug_assert!(ord < self.rpo_index.len());
+        let next_block_id =
+          *(self.rpo_index.get(ord + 1) ?);
+        debug_assert!(
+          self.get_block(next_block_id).has_finished());
+        Some(next_block_id)
+    }
+    pub(crate) unsafe fn prior_rpo_block(
+        &self, block_id: BlockId)
+      -> Option<BlockId>
+    {
+        let block = self.get_block(block_id);
+        debug_assert!(block.has_finished());
+        let ord = block.order as usize;
+        debug_assert!(ord < self.rpo_index.len());
+        if ord > 0 {
+            let prior_block_id =
+              *self.rpo_index.get_unchecked(ord - 1);
+            debug_assert!(
+              self.get_block(prior_block_id)
+                .has_finished());
+            Some(prior_block_id)
+        } else {
+            None
+        }
     }
 
     // Declare a new block and get an index for it.
