@@ -2,7 +2,7 @@
 use std::mem;
 
 use crate::block::{ Block, BlockId, BlockRef, BlockStore };
-use crate::ops::{ Operation, TerminalOperation };
+use crate::ops::Operation;
 use crate::instr::{ InstrId, InstrStore };
 use crate::defn::{ Defn, TypedDefn };
 
@@ -350,6 +350,7 @@ impl<'bs> BuildSession<'bs> {
       -> Option<InstrId>
       where OP: Operation
     {
+        debug_assert!(! OP::terminal());
         assert!(! self.get_cur_block().has_finished());
 
         // Add the instruction to the instr store.
@@ -387,8 +388,9 @@ impl<'bs> BuildSession<'bs> {
         operands: &[Defn<'cs>],
         targets: &[(BlockRef<'cs>, &[Defn<'cs>])])
       -> Option<InstrId>
-      where OP: TerminalOperation + Operation
+      where OP: Operation
     {
+        debug_assert!(OP::terminal());
         assert!(! self.get_cur_block().has_finished());
 
         // Add the instruction to the instr store.

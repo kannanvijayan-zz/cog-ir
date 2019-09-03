@@ -1,9 +1,7 @@
 
 use std::fmt;
 
-use crate::ops::{
-    Opcode, Operation, TerminalOperation, Op
-};
+use crate::ops::{ Opcode, Operation, Op };
 use crate::ir_types::IrTypeId;
 
 /**
@@ -17,14 +15,13 @@ impl JumpOp {
     pub(crate) fn new() -> JumpOp { JumpOp }
 }
 
-impl TerminalOperation for JumpOp {
-    fn num_targets(&self) -> u32 { 1 }
-}
 impl Operation for JumpOp {
     fn opcode() -> Opcode { Opcode::Jump }
+    fn terminal() -> bool { true }
     fn op(&self) -> Op { Op::Jump(self.clone()) }
     fn out_type(&self) -> Option<IrTypeId> { None }
     fn num_operands(&self) -> u32 { 0 }
+    fn num_targets(&self) -> Option<u32> { Some(1) }
 
     fn write_to(&self, vec: &mut Vec<u8>) {}
 

@@ -14,6 +14,9 @@ pub trait Operation: Sized + Clone + fmt::Display {
     /** Get the opcode for this operation. */
     fn opcode() -> Opcode;
 
+    /** Check if the operation is terminal. */
+    fn terminal() -> bool { false }
+
     /** Get the op for this operation. */
     fn op(&self) -> Op;
 
@@ -23,15 +26,13 @@ pub trait Operation: Sized + Clone + fmt::Display {
     /** Get the number of expected operands. */
     fn num_operands(&self) -> u32;
 
+    /** The number of target blocks for this operation,
+        only valid for a terminal operation. */
+    fn num_targets(&self) -> Option<u32> { None }
+
     /** Write to a vec. */
     fn write_to(&self, vec: &mut Vec<u8>);
 
     /** Read from some bytes, unchecked. */
     unsafe fn read_from(bytes: &[u8]) -> (usize, Self);
-}
-
-/** An terminal operation terminates a block. */
-pub trait TerminalOperation: Operation {
-    /** The number of target blocks for this operation. */
-    fn num_targets(&self) -> u32;
 }

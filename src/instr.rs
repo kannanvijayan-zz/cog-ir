@@ -3,7 +3,7 @@ use std::fmt;
 use std::str::from_utf8;
 use std::fmt::Write;
 
-use crate::ops::{ Operation, TerminalOperation };
+use crate::ops::{ Operation, Op };
 use crate::block::BlockId;
 
 use crate::leb128;
@@ -162,6 +162,8 @@ impl InstrStore {
       where OP: Operation,
             DEF: Copy + Into<InstrId>
     {
+        debug_assert!(! OP::terminal());
+
         if ! self.within_limits() { return None; }
 
         // Save the offset of the instruction
@@ -184,10 +186,12 @@ impl InstrStore {
         inputs: &[DEF],
         targets: &[(BLK, &[DEF])])
       -> Option<InstrId>
-      where OP: TerminalOperation,
+      where OP: Operation,
             DEF: Copy + Into<InstrId>,
             BLK: Copy + Into<BlockId>
     {
+        debug_assert!(OP::terminal());
+
         if ! self.within_limits() { return None; }
 
         // Save the offset of the instruction

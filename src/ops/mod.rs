@@ -3,7 +3,7 @@ mod opcode;
 pub use self::opcode::{ Opcode, SpecializeOpcode };
 
 mod operation;
-pub use self::operation::{ Operation, TerminalOperation };
+pub use self::operation::Operation;
 
 mod op;
 pub use self::op::Op;

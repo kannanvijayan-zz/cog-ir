@@ -2,9 +2,7 @@
 use std::fmt;
 use std::marker::PhantomData;
 
-use crate::ops::{
-    Opcode, Operation, TerminalOperation, Op
-};
+use crate::ops::{ Opcode, Operation, Op };
 use crate::ir_types::{ IrType, IrTypeId, VoidTy };
 
 #[derive(Clone)]
@@ -15,16 +13,15 @@ impl RetOp {
         RetOp { tyid }
     }
 }
-impl TerminalOperation for RetOp {
-    fn num_targets(&self) -> u32 { 0 }
-}
 impl Operation for RetOp {
     fn opcode() -> Opcode { Opcode::Ret }
+    fn terminal() -> bool { true }
     fn op(&self) -> Op { Op::Ret(self.clone()) }
     fn out_type(&self) -> Option<IrTypeId> {
       Some(self.tyid)
     }
     fn num_operands(&self) -> u32 { 1 }
+    fn num_targets(&self) -> Option<u32> { Some(0) }
 
     fn write_to(&self, vec: &mut Vec<u8>) {
         vec.push(self.tyid.into_u8());
